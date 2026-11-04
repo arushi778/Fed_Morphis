@@ -1,0 +1,83 @@
+# Dataset Configuration for Diabetic Retinopathy Lesion Segmentation
+dataset_names:
+  - "DDR"
+  - "IDRiD"
+
+# Relative paths under project root (not hardcoded to local machine paths)
+paths:
+  raw_ddr: "data/raw/DDR"
+  raw_idrid: "data/raw/IDRiD"
+  processed: "data/processed"
+  manifests: "data/processed/manifests"
+  partitions: "data/partitions"
+
+# Target lesion classes for diabetic retinopathy segmentation
+lesion_classes:
+  - "background"
+  - "microaneurysms"        # MA
+  - "hemorrhages"           # HE
+  - "hard_exudates"         # EX
+  - "soft_exudates"         # SE
+
+# Canonical 4-channel binary lesion target configuration (Phase 1, Task 3B)
+canonical_lesion_channels:
+  - "MA"  # Channel 0: Microaneurysms
+  - "HE"  # Channel 1: Haemorrhages
+  - "EX"  # Channel 2: Hard Exudates
+  - "SE"  # Channel 3: Soft Exudates
+excluded_anatomical_structures:
+  - "OD"  # Optic Disc (anatomical structure excluded from lesion target)
+mask_binarization_threshold: 0
+
+# Retinal field-of-view (FOV) detection and cropping configuration
+fov_cropping:
+  enabled: true
+  intensity_threshold: 10
+  margin_pixels: 0
+  min_fov_area_fraction: 0.01
+  preserve_boundary_lesions: true
+  fallback_to_full_image: true
+
+# Spatial resolution & DataLoader parameters
+image_size:
+  height: 512
+  width: 512
+batch_size: 8
+number_of_workers: 4
+pin_memory: true
+persistent_workers: false
+drop_last_train: false
+
+# Deterministic evaluation & resizing transform settings
+evaluation_transforms:
+  resize_interpolation: "linear"   # Bilinear (cv2.INTER_LINEAR) for RGB fundus images
+  mask_interpolation: "nearest"    # Nearest-neighbor (cv2.INTER_NEAREST) for 4-channel binary masks
+  normalize: true
+
+# Image intensity normalization (ImageNet defaults as baseline; replaceable by retinal statistics)
+normalization:
+  enabled: true
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+  fov_crop: true
+  clahe_enhancement: false
+
+# Conservative training augmentation configuration (Albumentations 2.0.8)
+augmentation:
+  enabled: true
+  horizontal_flip_prob: 0.5
+  vertical_flip_prob: 0.5
+  random_rotate90_prob: 0.5
+  color_jitter:
+    enabled: true
+    prob: 0.5
+    brightness: 0.15
+    contrast: 0.15
+    saturation: 0.15
+    hue: 0.05
+
+# Dataset split ratios (must sum to 1.0)
+train_validation_test_split:
+  train: 0.70
+  validation: 0.15
+  test: 0.15

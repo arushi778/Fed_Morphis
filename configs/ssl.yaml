@@ -1,0 +1,28 @@
+# Self-Supervised Learning (SimCLR) Configuration (Placeholder for Phase 2 implementation)
+method: "SimCLR"
+backbone: "resnet50"
+
+# Projection head settings
+projection_dimension: 128
+projection_hidden_dimension: 2048
+
+# Contrastive loss (NT-Xent) settings
+temperature: 0.5
+normalize_projections: true
+
+# Optimization settings
+learning_rate: 0.0003
+weight_decay: 0.0001
+optimizer: "adamw"
+lr_scheduler: "cosine_annealing"
+warmup_epochs: 10
+epochs: 100
+batch_size: 32
+
+# SimCLR view augmentation settings (placeholder)
+augmentations:
+  random_resized_crop_scale: [0.2, 1.0]
+  color_distortion_strength: 0.5
+  gaussian_blur_prob: 0.5
+  horizontal_flip_prob: 0.5
+

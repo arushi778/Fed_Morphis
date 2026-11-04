@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual environments
+.venv/
+.venv*/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Environment variables & secrets
+.env
+.env.local
+
+# Datasets & large artifacts (keep directory skeleton via .gitkeep)
+data/raw/DDR/*
+!data/raw/DDR/.gitkeep
+data/raw/IDRiD/*
+!data/raw/IDRiD/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/partitions/*
+!data/partitions/.gitkeep
+
+# Checkpoints
+checkpoints/ssl/*
+!checkpoints/ssl/.gitkeep
+checkpoints/segmentation/*
+!checkpoints/segmentation/.gitkeep
+checkpoints/federated/*
+!checkpoints/federated/.gitkeep
+
+# Experiments, MLflow runs, and logs
+experiments/*
+!experiments/.gitkeep
+logs/*
+!logs/.gitkeep
+mlruns/
+mlartifacts/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# IDEs & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+

@@ -1,0 +1,20 @@
+# FedMorphis Project Configuration
+project_name: "FedMorphis"
+description: "Self-Supervised and Federated Learning for Biomedical Applications (Diabetic Retinopathy Lesion Segmentation)"
+version: "0.1.0"
+phase: "Phase 0 - Initialization & Architecture"
+
+# Reproducibility and runtime settings
+random_seed: 42
+deterministic: true
+
+# Compute device ("auto", "cuda", "cpu")
+# Detected hardware: NVIDIA GeForce RTX 5050 Laptop GPU (8 GB VRAM, Driver 592.19, CUDA 13.1)
+device: "auto"
+
+# Relative directories (resolved via pathlib relative to project root)
+output_directory: "experiments"
+logs_directory: "logs"
+checkpoints_directory: "checkpoints"
+data_directory: "data"
+

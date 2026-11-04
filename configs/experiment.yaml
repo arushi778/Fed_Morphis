@@ -1,0 +1,30 @@
+# Experiment Tracking & Evaluation Configuration
+experiment_name: "fedmorphis_baseline"
+tracking_enabled: true
+tracker_backend: "mlflow"
+tracking_uri: "experiments/mlruns"
+
+# Checkpointing settings (relative to project root)
+checkpoint_directory: "checkpoints"
+save_top_k: 2
+monitor_metric: "val_dice_macro"
+monitor_mode: "max"
+
+# Evaluation metrics for Diabetic Retinopathy Lesion Segmentation
+evaluation_metrics:
+  - "dice_score"
+  - "iou_jaccard"
+  - "auprc"
+  - "sensitivity_recall"
+  - "specificity"
+  - "precision"
+
+# Planned comparative study regimes (placeholder for later phases)
+planned_regimes:
+  - "centralized_supervised_scratch"
+  - "centralized_supervised_imagenet"
+  - "centralized_ssl_pretrained"
+  - "federated_supervised_fedavg"
+  - "federated_supervised_fedprox"
+  - "federated_ssl_pretrained_segmentation"
+

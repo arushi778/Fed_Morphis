@@ -1,0 +1,18 @@
+# Segmentation Model Configuration (Placeholder for Phase 2/3 implementation)
+architecture: "UNet"
+encoder: "resnet50"
+pretrained: true
+input_channels: 3
+number_of_classes: 5  # background + 4 DR lesion types (MA, HE, EX, SE)
+
+# Decoder & head settings (placeholder)
+decoder:
+  channels: [256, 128, 64, 32, 16]
+  use_batchnorm: true
+  dropout: 0.1
+  activation: null  # raw logits for Dice + CrossEntropy / Focal loss
+
+# Weight initialization source ("imagenet", "ssl_checkpoint", "random")
+encoder_weights_source: "imagenet"
+ssl_checkpoint_path: "checkpoints/ssl/best_simclr_resnet50.pt"
+
