@@ -1,18 +1,83 @@
-# Segmentation Model Configuration (Placeholder for Phase 2/3 implementation)
+# Segmentation Model & Supervised Baseline Training Configuration (Phase 2, Task 1)
 architecture: "UNet"
 encoder: "resnet50"
 pretrained: true
+strict_pretrained: false
 input_channels: 3
-number_of_classes: 5  # background + 4 DR lesion types (MA, HE, EX, SE)
+number_of_classes: 4  # 4 independent DR lesion channels: [MA, HE, EX, SE]
+output_channels: 4
+output_channel_order:
+  - "MA"
+  - "HE"
+  - "EX"
+  - "SE"
 
-# Decoder & head settings (placeholder)
+# U-Net decoder & segmentation head settings
 decoder:
   channels: [256, 128, 64, 32, 16]
   use_batchnorm: true
   dropout: 0.1
-  activation: null  # raw logits for Dice + CrossEntropy / Focal loss
+  activation: null  # Model returns raw logits (B, 4, H, W); sigmoid applied in loss/metrics
 
 # Weight initialization source ("imagenet", "ssl_checkpoint", "random")
 encoder_weights_source: "imagenet"
-ssl_checkpoint_path: "checkpoints/ssl/best_simclr_resnet50.pt"
+ssl_checkpoint_path: "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
 
+# Multilabel BCE + Soft Dice segmentation loss configuration
+loss:
+  type: "bce_dice"
+  bce_weight: 0.5
+  dice_weight: 0.5
+  smooth: 1.0e-5
+
+# Supervised baseline training & validation hyperparameters
+training:
+  optimizer: "adamw"
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  epochs: 50
+  mixed_precision: true
+  gradient_clip_max_norm: 1.0
+  metric_threshold: 0.5
+  checkpoint_directory: "checkpoints/segmentation"
+  monitor_metric: "val_dice_macro"
+  monitor_mode: "max"
+
+# Dedicated SimCLR self-supervised representation learning configuration (Phase 3, Task 1)
+simclr:
+  method: "SimCLR"
+  backbone: "resnet50"
+  input_channels: 3
+  pretrained: true
+  strict_pretrained: false
+  encoder_weights_source: "imagenet"
+  supervised_checkpoint_path: "checkpoints/segmentation/best_checkpoint.pt"
+  random_seed: 42
+  projection_dimension: 128
+  projection_hidden_dimension: 2048
+  projection_use_batchnorm: false
+  temperature: 0.5
+  normalize_projections: true
+  batch_size: 16
+  epochs: 50
+  optimizer: "adamw"
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  lr_scheduler: "cosine_annealing"
+  warmup_epochs: 5
+  mixed_precision: true
+  gradient_clip_max_norm: 1.0
+  checkpoint_directory: "checkpoints/ssl"
+  augmentations:
+    image_size: 512
+    random_resized_crop_scale: [0.5, 1.0]
+    horizontal_flip_prob: 0.5
+    vertical_flip_prob: 0.5
+    random_rotate90_prob: 0.5
+    color_jitter_prob: 0.8
+    color_distortion_strength: 0.5
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+    hue: 0.05
+    gaussian_blur_prob: 0.5

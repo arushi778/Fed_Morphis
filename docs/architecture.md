@@ -119,10 +119,11 @@ A central requirement of FedMorphis is maintaining a strict conceptual and progr
 
 - `src/utils/`: Project root discovery (`pathlib`), YAML configuration loading and validation, deterministic seeding, and structured logging.
 - `src/data/`: Dataset wrappers for DDR and IDRiD, retinal FOV mask generation, Albumentations transforms, SimCLR dual-view generators, and client partitioners.
-- `src/models/`: Modular ResNet-50 feature extractor, SimCLR MLP projection head, and U-Net decoder with skip connections.
+- `src/models/`: Modular `ResNet50UNet` encoder-decoder (`src/models/unet.py`), multilabel `BCEDiceLoss` & `SoftDiceLoss` (`src/models/losses.py`), and `SegmentationMetricTracker` (`src/models/metrics.py`).
+- `src/engine/`: Reusable `SupervisedSegmentationTrainer` (`src/engine/trainer.py`) with AMP mixed precision, gradient norm clipping, checkpoint persistence/resume, and test-split leakage prevention.
 - `src/ssl/`: NT-Xent loss implementation and SimCLR epoch runner.
-- `src/segmentation/`: Multi-class Dice/Focal losses and supervised segmentation training/validation engine.
+- `src/segmentation/`: Multi-label segmentation pipeline exports and downstream fine-tuning utilities.
 - `src/federated/`: Flower `NumPyClient` subclasses for both SSL and Segmentation, custom `FedAvg` / `FedProx` strategy wrappers, and simulation runners.
-- `src/evaluation/`: TorchMetrics/MONAI metric evaluators, AUPRC computation, and cross-regime comparison tables.
+- `src/evaluation/`: Per-class (`MA`, `HE`, `EX`, `SE`) and macro-averaged Dice, IoU, Precision, Recall, Sensitivity, and Specificity evaluators with explicit empty-mask policies.
 - `src/experiments/`: End-to-end experiment orchestrator linking YAML configs to MLflow runs.
 

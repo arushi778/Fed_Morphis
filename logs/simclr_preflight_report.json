@@ -1,0 +1,174 @@
+{
+  "status": "passed",
+  "mode": "simclr_full_resolution_preflight",
+  "device": "cuda",
+  "device_name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "amp_enabled": true,
+  "manifest_path": "data/processed/manifests/ddr_manifest.json",
+  "approved_train_pool_count": 383,
+  "validation_or_test_loaded": false,
+  "masks_loaded": false,
+  "image_size": [
+    512,
+    512
+  ],
+  "candidate_batch_sizes": [
+    2,
+    4,
+    8,
+    16
+  ],
+  "largest_verified_batch_size": 16,
+  "trials": [
+    {
+      "batch_size": 2,
+      "two_view_forward_tensors": [
+        4,
+        3,
+        512,
+        512
+      ],
+      "status": "passed",
+      "sample_ids": [
+        "007-1774-100",
+        "007-1782-100"
+      ],
+      "splits_verified": [
+        "train"
+      ],
+      "masks_loaded": false,
+      "train_loss": 0.9757070541381836,
+      "positive_similarity": 0.8825187087059021,
+      "negative_similarity": 0.785354495048523,
+      "contrastive_accuracy": 1.0,
+      "grad_norm_last": 7.953137397766113,
+      "elapsed_sec": 2.1973,
+      "weights_finite": true,
+      "checkpoint_reloaded": true,
+      "latest_checkpoint": "checkpoints/ssl/preflight/bs_2/latest_ssl_checkpoint.pt",
+      "best_checkpoint": "checkpoints/ssl/preflight/bs_2/best_ssl_checkpoint.pt",
+      "max_memory_allocated_bytes": 1200728064,
+      "max_memory_allocated_mb": 1145.1,
+      "max_memory_reserved_bytes": 1314914304,
+      "max_memory_reserved_mb": 1254.0
+    },
+    {
+      "batch_size": 4,
+      "two_view_forward_tensors": [
+        8,
+        3,
+        512,
+        512
+      ],
+      "status": "passed",
+      "sample_ids": [
+        "007-1774-100",
+        "007-1782-100",
+        "007-1811-100",
+        "007-1819-100"
+      ],
+      "splits_verified": [
+        "train"
+      ],
+      "masks_loaded": false,
+      "train_loss": 1.851752758026123,
+      "positive_similarity": 0.8398274183273315,
+      "negative_similarity": 0.7821160554885864,
+      "contrastive_accuracy": 0.75,
+      "grad_norm_last": 6.591308116912842,
+      "elapsed_sec": 0.6099,
+      "weights_finite": true,
+      "checkpoint_reloaded": true,
+      "latest_checkpoint": "checkpoints/ssl/preflight/bs_4/latest_ssl_checkpoint.pt",
+      "best_checkpoint": "checkpoints/ssl/preflight/bs_4/best_ssl_checkpoint.pt",
+      "max_memory_allocated_bytes": 2689443328,
+      "max_memory_allocated_mb": 2564.85,
+      "max_memory_reserved_bytes": 2866806784,
+      "max_memory_reserved_mb": 2734.0
+    },
+    {
+      "batch_size": 8,
+      "two_view_forward_tensors": [
+        16,
+        3,
+        512,
+        512
+      ],
+      "status": "passed",
+      "sample_ids": [
+        "007-1774-100",
+        "007-1782-100",
+        "007-1811-100",
+        "007-1819-100",
+        "007-1824-100",
+        "007-1829-100",
+        "007-1831-100",
+        "007-1889-100"
+      ],
+      "splits_verified": [
+        "train"
+      ],
+      "masks_loaded": false,
+      "train_loss": 2.624298334121704,
+      "positive_similarity": 0.7956418395042419,
+      "negative_similarity": 0.7477685213088989,
+      "contrastive_accuracy": 0.375,
+      "grad_norm_last": 5.3996100425720215,
+      "elapsed_sec": 0.821,
+      "weights_finite": true,
+      "checkpoint_reloaded": true,
+      "latest_checkpoint": "checkpoints/ssl/preflight/bs_8/latest_ssl_checkpoint.pt",
+      "best_checkpoint": "checkpoints/ssl/preflight/bs_8/best_ssl_checkpoint.pt",
+      "max_memory_allocated_bytes": 4539184128,
+      "max_memory_allocated_mb": 4328.9,
+      "max_memory_reserved_bytes": 5039456256,
+      "max_memory_reserved_mb": 4806.0
+    },
+    {
+      "batch_size": 16,
+      "two_view_forward_tensors": [
+        32,
+        3,
+        512,
+        512
+      ],
+      "status": "passed",
+      "sample_ids": [
+        "007-1774-100",
+        "007-1782-100",
+        "007-1811-100",
+        "007-1819-100",
+        "007-1824-100",
+        "007-1829-100",
+        "007-1831-100",
+        "007-1889-100",
+        "007-1894-100",
+        "007-1900-100",
+        "007-1909-100",
+        "007-1921-100",
+        "007-1946-100",
+        "007-1971-100",
+        "007-1974-100",
+        "007-1975-100"
+      ],
+      "splits_verified": [
+        "train"
+      ],
+      "masks_loaded": false,
+      "train_loss": 3.304609537124634,
+      "positive_similarity": 0.7907073497772217,
+      "negative_similarity": 0.7199455499649048,
+      "contrastive_accuracy": 0.46875,
+      "grad_norm_last": 5.333191394805908,
+      "elapsed_sec": 6.2241,
+      "weights_finite": true,
+      "checkpoint_reloaded": true,
+      "latest_checkpoint": "checkpoints/ssl/preflight/bs_16/latest_ssl_checkpoint.pt",
+      "best_checkpoint": "checkpoints/ssl/preflight/bs_16/best_ssl_checkpoint.pt",
+      "max_memory_allocated_bytes": 8264882176,
+      "max_memory_allocated_mb": 7882.01,
+      "max_memory_reserved_bytes": 9212788736,
+      "max_memory_reserved_mb": 8786.0
+    }
+  ]
+}

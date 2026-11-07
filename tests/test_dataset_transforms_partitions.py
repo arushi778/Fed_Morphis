@@ -569,3 +569,172 @@ def test_grading_images_rejected_by_dataset_and_partitioner(tmp_path: Path) -> N
     assert len(ds) == 1
     assert ds.records[0]["sample_id"] == "seg_valid_01"
 
+
+def test_fov_crop_configuration_overrides_recompute_crop(tmp_path: Path) -> None:
+    """Verify cached fov_crop metadata is reused only when threshold, margin, and boundary settings match (M-2)."""
+    from src.data.dataset import SimCLRUnlabeledDataset
+
+    rec = _create_synthetic_sample_files(
+        tmp_path / "fov_override",
+        "fov_sample_01",
+        split="train",
+        height=64,
+        width=64,
+    )
+    # Attach a cached crop box [6:42, 8:54] (height=36, width=46) enclosing all lesion boxes [8:40, 10:52]
+    # while being strictly smaller than the full intensity FOV [4:60, 6:58] (height=56, width=52)
+    rec_with_cache = {
+        **rec,
+        "fov_crop": {
+            "y_min": 6,
+            "y_max": 42,
+            "x_min": 8,
+            "x_max": 54,
+            "original_height": 64,
+            "original_width": 64,
+            "cropped_height": 36,
+            "cropped_width": 46,
+            "threshold": 10,
+            "margin": 0,
+            "boundary_expanded_for_mask": True,
+        },
+    }
+
+    base_ds_cfg = load_yaml_config("dataset.yaml")
+
+    def _cfg_with_fov(
+        threshold: int = 10,
+        margin: int = 0,
+        preserve_boundary_lesions: bool = True,
+    ) -> dict[str, Any]:
+        return {
+            **base_ds_cfg,
+            "fov_cropping": {
+                **base_ds_cfg.get("fov_cropping", {}),
+                "enabled": True,
+                "intensity_threshold": threshold,
+                "margin_pixels": margin,
+                "preserve_boundary_lesions": preserve_boundary_lesions,
+            },
+        }
+
+    # 1. Matching configuration reuses cached fov_crop box (36x46)
+    ds_match = RetinalLesionSegmentationDataset(
+        [rec_with_cache],
+        split="train",
+        dataset_config=_cfg_with_fov(
+            threshold=10, margin=0, preserve_boundary_lesions=True
+        ),
+        fov_crop=True,
+        return_metadata=True,
+    )
+    img_m, mask_m, meta_m = ds_match._load_and_crop_raw_index(0)
+    assert img_m.shape == (36, 46, 3)
+    assert mask_m.shape == (36, 46, 4)
+    assert meta_m["cropped_shape"] == [36, 46]
+
+    # 2. Overriding margin_pixels (e.g. margin=4) forces recomputation from the actual image FOV [4:60, 6:58]
+    ds_margin_override = RetinalLesionSegmentationDataset(
+        [rec_with_cache],
+        split="train",
+        dataset_config=_cfg_with_fov(
+            threshold=10, margin=4, preserve_boundary_lesions=True
+        ),
+        fov_crop=True,
+        return_metadata=True,
+    )
+    img_mo, _, meta_mo = ds_margin_override._load_and_crop_raw_index(0)
+    assert img_mo.shape != (36, 46, 3)
+    assert meta_mo["fov_crop"]["margin"] == 4
+
+    # 3. Overriding intensity_threshold forces recomputation in both segmentation and SimCLR datasets
+    ds_thresh_override = RetinalLesionSegmentationDataset(
+        [rec_with_cache],
+        split="train",
+        dataset_config=_cfg_with_fov(
+            threshold=25, margin=0, preserve_boundary_lesions=True
+        ),
+        fov_crop=True,
+        return_metadata=True,
+    )
+    img_to, _, meta_to = ds_thresh_override._load_and_crop_raw_index(0)
+    assert img_to.shape != (36, 46, 3)
+    assert meta_to["fov_crop"]["threshold"] == 25
+
+    # 4. Overriding preserve_boundary_lesions forces recomputation when boundary_expanded_for_mask mismatches
+    ds_bound_override = RetinalLesionSegmentationDataset(
+        [rec_with_cache],
+        split="train",
+        dataset_config=_cfg_with_fov(
+            threshold=10, margin=0, preserve_boundary_lesions=False
+        ),
+        fov_crop=True,
+        return_metadata=True,
+    )
+    img_bo, _, _ = ds_bound_override._load_and_crop_raw_index(0)
+    assert img_bo.shape != (36, 46, 3)
+
+    # 5. SimCLRUnlabeledDataset also recomputes when threshold or margin overrides cached fov_crop
+    ssl_rec_cache = {
+        **rec_with_cache,
+        "fov_crop": {
+            **rec_with_cache["fov_crop"],
+            "boundary_expanded_for_mask": False,
+        },
+    }
+    ssl_match = SimCLRUnlabeledDataset(
+        [ssl_rec_cache],
+        dataset_config=_cfg_with_fov(
+            threshold=10, margin=0, preserve_boundary_lesions=False
+        ),
+        fov_crop=True,
+        cache_in_memory=False,
+    )
+    ssl_img_match, _ = ssl_match._load_and_crop_unlabeled_index(0)
+    assert ssl_img_match.shape == (36, 46, 3)
+
+    ssl_override = SimCLRUnlabeledDataset(
+        [ssl_rec_cache],
+        dataset_config=_cfg_with_fov(
+            threshold=10, margin=3, preserve_boundary_lesions=False
+        ),
+        fov_crop=True,
+        cache_in_memory=False,
+    )
+    ssl_img_override, ssl_meta_override = ssl_override._load_and_crop_unlabeled_index(0)
+    assert ssl_img_override.shape != (36, 46, 3)
+    assert ssl_meta_override["cropped_shape"] != [36, 46]
+
+
+def test_simclr_cache_resizing_preserves_aspect_ratio_for_nonsquare_images(
+    tmp_path: Path,
+) -> None:
+    """Verify SimCLRUnlabeledDataset cache resizing scales proportionally and preserves aspect ratio (L-1)."""
+    from src.data.dataset import SimCLRUnlabeledDataset
+
+    # Create a non-square 600x1200 image (1:2 aspect ratio) exceeding max_dim=1024
+    img_path = tmp_path / "nonsquare_fundus.png"
+    arr = np.full((600, 1200, 3), fill_value=120, dtype=np.uint8)
+    Image.fromarray(arr).save(img_path)
+
+    rec = {
+        "dataset_name": "DDR",
+        "sample_id": "nonsquare_01",
+        "split": "train",
+        "image_path": str(img_path),
+    }
+
+    # With image_size=(256, 256), max_dim = max(256*2, 1024) = 1024.
+    # Proportional scaling of (600, 1200) to max_dim=1024 must produce (512, 1024, 3), not (1024, 1024, 3).
+    ds = SimCLRUnlabeledDataset(
+        [rec],
+        image_size=(256, 256),
+        fov_crop=False,
+        cache_in_memory=True,
+    )
+    cached_rgb, _ = ds._load_and_crop_unlabeled_index(0)
+    assert cached_rgb.shape == (512, 1024, 3)
+    assert max(cached_rgb.shape[:2]) == 1024
+    assert cached_rgb.shape[1] / cached_rgb.shape[0] == pytest.approx(2.0)
+
+

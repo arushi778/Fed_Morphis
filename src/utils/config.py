@@ -39,9 +39,13 @@ SUPPORTED_IMAGE_INTERPOLATIONS: tuple[str, ...] = (
 )
 SUPPORTED_ENCODER_WEIGHT_SOURCES: tuple[str, ...] = (
     "imagenet",
+    "supervised_checkpoint",
     "ssl_checkpoint",
     "random",
 )
+SUPPORTED_OPTIMIZERS: tuple[str, ...] = ("adam", "adamw", "sgd")
+SUPPORTED_MONITOR_MODES: tuple[str, ...] = ("max", "min")
+CANONICAL_MODEL_CHANNELS: tuple[str, ...] = ("MA", "HE", "EX", "SE")
 
 
 class ConfigValidationError(ValueError):
@@ -347,9 +351,137 @@ def validate_model_config(config: Mapping[str, Any]) -> None:
                 f"{SUPPORTED_ENCODER_WEIGHT_SOURCES}, got {src_val!r}."
             )
 
+    if "strict_pretrained" in cfg:
+        _require_bool(cfg["strict_pretrained"], "strict_pretrained", ctx)
+
+    if "ssl_checkpoint_path" in cfg and cfg["ssl_checkpoint_path"] is not None:
+        _require_non_empty_str(cfg["ssl_checkpoint_path"], "ssl_checkpoint_path", ctx)
+
+    if "output_channels" in cfg:
+        out_ch = _require_int(cfg["output_channels"], "output_channels", ctx, min_value=1)
+        if out_ch != 4:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'output_channels' must be 4 for [MA, HE, EX, SE], got {out_ch}."
+            )
+
+    if "output_channel_order" in cfg:
+        order = cfg["output_channel_order"]
+        if not isinstance(order, list) or tuple(order) != CANONICAL_MODEL_CHANNELS:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'output_channel_order' must be {list(CANONICAL_MODEL_CHANNELS)}, "
+                f"got {order!r}."
+            )
+
+    if "loss" in cfg:
+        loss_cfg = _require_mapping(cfg["loss"], f"{ctx}:loss")
+        bce_w = float(
+            _require_number(
+                loss_cfg.get("bce_weight", 0.5),
+                "loss.bce_weight",
+                ctx,
+                min_value=0.0,
+            )
+        )
+        dice_w = float(
+            _require_number(
+                loss_cfg.get("dice_weight", 0.5),
+                "loss.dice_weight",
+                ctx,
+                min_value=0.0,
+            )
+        )
+        if (bce_w + dice_w) <= 0.0:
+            raise ConfigValidationError(
+                f"[{ctx}] 'loss.bce_weight' + 'loss.dice_weight' must be > 0."
+            )
+        if "smooth" in loss_cfg:
+            _require_number(
+                loss_cfg["smooth"], "loss.smooth", ctx, min_value=0.0, strict_min=True
+            )
+
+    if "training" in cfg:
+        tr_cfg = _require_mapping(cfg["training"], f"{ctx}:training")
+        if "optimizer" in tr_cfg:
+            opt_name = _require_non_empty_str(
+                tr_cfg["optimizer"], "training.optimizer", ctx
+            ).lower()
+            if opt_name not in SUPPORTED_OPTIMIZERS:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'training.optimizer' must be one of "
+                    f"{SUPPORTED_OPTIMIZERS}, got {tr_cfg['optimizer']!r}."
+                )
+        if "learning_rate" in tr_cfg:
+            _require_number(
+                tr_cfg["learning_rate"],
+                "training.learning_rate",
+                ctx,
+                min_value=0.0,
+                strict_min=True,
+            )
+        if "weight_decay" in tr_cfg:
+            _require_number(
+                tr_cfg["weight_decay"],
+                "training.weight_decay",
+                ctx,
+                min_value=0.0,
+            )
+        if "epochs" in tr_cfg:
+            _require_int(tr_cfg["epochs"], "training.epochs", ctx, min_value=1)
+        if "mixed_precision" in tr_cfg:
+            _require_bool(
+                tr_cfg["mixed_precision"], "training.mixed_precision", ctx
+            )
+        if (
+            "gradient_clip_max_norm" in tr_cfg
+            and tr_cfg["gradient_clip_max_norm"] is not None
+        ):
+            _require_number(
+                tr_cfg["gradient_clip_max_norm"],
+                "training.gradient_clip_max_norm",
+                ctx,
+                min_value=0.0,
+                strict_min=True,
+            )
+        if "metric_threshold" in tr_cfg:
+            _require_number(
+                tr_cfg["metric_threshold"],
+                "training.metric_threshold",
+                ctx,
+                min_value=0.0,
+                max_value=1.0,
+                strict_min=True,
+            )
+            if float(tr_cfg["metric_threshold"]) >= 1.0:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'training.metric_threshold' must be in (0.0, 1.0), "
+                    f"got {tr_cfg['metric_threshold']}."
+                )
+        if "checkpoint_directory" in tr_cfg:
+            _require_non_empty_str(
+                tr_cfg["checkpoint_directory"],
+                "training.checkpoint_directory",
+                ctx,
+            )
+        if "monitor_metric" in tr_cfg:
+            _require_non_empty_str(
+                tr_cfg["monitor_metric"], "training.monitor_metric", ctx
+            )
+        if "monitor_mode" in tr_cfg:
+            m_mode = _require_non_empty_str(
+                tr_cfg["monitor_mode"], "training.monitor_mode", ctx
+            ).lower()
+            if m_mode not in SUPPORTED_MONITOR_MODES:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'training.monitor_mode' must be one of "
+                    f"{SUPPORTED_MONITOR_MODES}, got {tr_cfg['monitor_mode']!r}."
+                )
+
+    if "simclr" in cfg:
+        validate_ssl_config(cfg["simclr"])
+
 
 def validate_ssl_config(config: Mapping[str, Any]) -> None:
-    """Validate ``ssl.yaml`` configuration fields."""
+    """Validate ``ssl.yaml`` (or ``model.yaml:simclr``) configuration fields."""
     ctx = "ssl.yaml"
     cfg = _require_mapping(config, ctx)
     _require_fields(
@@ -364,18 +496,109 @@ def validate_ssl_config(config: Mapping[str, Any]) -> None:
         ctx,
     )
 
-    _require_non_empty_str(cfg["method"], "method", ctx)
+    method_val = _require_non_empty_str(cfg["method"], "method", ctx)
+    if method_val.strip().lower() != "simclr":
+        raise ConfigValidationError(
+            f"[{ctx}] Field 'method' must be 'SimCLR', got {method_val!r}."
+        )
+
     _require_int(cfg["projection_dimension"], "projection_dimension", ctx, min_value=1)
+    if "projection_hidden_dimension" in cfg:
+        _require_int(
+            cfg["projection_hidden_dimension"],
+            "projection_hidden_dimension",
+            ctx,
+            min_value=1,
+        )
+    if "projection_use_batchnorm" in cfg:
+        _require_bool(
+            cfg["projection_use_batchnorm"], "projection_use_batchnorm", ctx
+        )
+
     _require_number(
         cfg["temperature"], "temperature", ctx, min_value=0.0, strict_min=True
     )
+    if "normalize_projections" in cfg:
+        _require_bool(cfg["normalize_projections"], "normalize_projections", ctx)
+
     _require_number(
         cfg["learning_rate"], "learning_rate", ctx, min_value=0.0, strict_min=True
     )
+    if "weight_decay" in cfg:
+        _require_number(cfg["weight_decay"], "weight_decay", ctx, min_value=0.0)
+    if "optimizer" in cfg:
+        opt_name = _require_non_empty_str(cfg["optimizer"], "optimizer", ctx).lower()
+        if opt_name not in SUPPORTED_OPTIMIZERS:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'optimizer' must be one of {SUPPORTED_OPTIMIZERS}, "
+                f"got {cfg['optimizer']!r}."
+            )
+
     _require_int(cfg["epochs"], "epochs", ctx, min_value=1)
 
     if "batch_size" in cfg:
-        _require_int(cfg["batch_size"], "batch_size", ctx, min_value=1)
+        _require_int(cfg["batch_size"], "batch_size", ctx, min_value=2)
+
+    if "random_seed" in cfg:
+        _require_int(
+            cfg["random_seed"],
+            "random_seed",
+            ctx,
+            min_value=0,
+            max_value=MAX_UINT32_SEED,
+        )
+
+    if "pretrained" in cfg:
+        _require_bool(cfg["pretrained"], "pretrained", ctx)
+    if "strict_pretrained" in cfg:
+        _require_bool(cfg["strict_pretrained"], "strict_pretrained", ctx)
+
+    if "ssl_checkpoint_path" in cfg and cfg["ssl_checkpoint_path"] is not None:
+        _require_non_empty_str(cfg["ssl_checkpoint_path"], "ssl_checkpoint_path", ctx)
+    if "encoder_weights_source" in cfg:
+        src_val = _require_non_empty_str(
+            cfg["encoder_weights_source"], "encoder_weights_source", ctx
+        ).lower()
+        if src_val not in SUPPORTED_ENCODER_WEIGHT_SOURCES:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'encoder_weights_source' must be one of "
+                f"{SUPPORTED_ENCODER_WEIGHT_SOURCES}, got {cfg['encoder_weights_source']!r}."
+            )
+
+    if "augmentations" in cfg:
+        aug = _require_mapping(cfg["augmentations"], f"{ctx}:augmentations")
+        if "image_size" in aug:
+            _require_int(aug["image_size"], "augmentations.image_size", ctx, min_value=32)
+        if "random_resized_crop_scale" in aug:
+            scale = aug["random_resized_crop_scale"]
+            if (
+                not isinstance(scale, (list, tuple))
+                or len(scale) != 2
+                or not _is_number(scale[0])
+                or not _is_number(scale[1])
+                or float(scale[0]) <= 0.0
+                or float(scale[1]) > 1.0
+                or float(scale[0]) > float(scale[1])
+            ):
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'augmentations.random_resized_crop_scale' must be "
+                    f"[min_scale, max_scale] with 0 < min_scale <= max_scale <= 1.0, got {scale!r}."
+                )
+        for prob_key in (
+            "horizontal_flip_prob",
+            "vertical_flip_prob",
+            "random_rotate90_prob",
+            "color_jitter_prob",
+            "gaussian_blur_prob",
+        ):
+            if prob_key in aug:
+                _require_number(
+                    aug[prob_key],
+                    f"augmentations.{prob_key}",
+                    ctx,
+                    min_value=0.0,
+                    max_value=1.0,
+                )
 
 
 def validate_federated_config(config: Mapping[str, Any]) -> None:

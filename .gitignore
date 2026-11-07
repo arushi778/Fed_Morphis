@@ -29,8 +29,12 @@ data/raw/IDRiD/*
 !data/raw/IDRiD/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/manifests/
+data/processed/manifests/*
+!data/processed/manifests/*.json
 data/partitions/*
 !data/partitions/.gitkeep
+!data/partitions/*.json
 
 # Checkpoints
 checkpoints/ssl/*
@@ -45,6 +49,12 @@ experiments/*
 !experiments/.gitkeep
 logs/*
 !logs/.gitkeep
+!logs/dataset_inventory.json
+!logs/supervised_baseline_ddr_report.json
+!logs/supervised_baseline_ddr_test_report.json
+!logs/simclr_preflight_report.json
+!logs/simclr_ddr_pretraining_report.json
+!logs/simclr_finetuned_ddr_report.json
 mlruns/
 mlartifacts/
 

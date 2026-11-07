@@ -3,7 +3,11 @@
 from src.data.dataset import (
     DatasetSampleError,
     RetinalLesionSegmentationDataset,
+    SimCLRUnlabeledDataset,
     build_segmentation_dataloader,
+    build_simclr_dataloader,
+    select_ssl_training_records,
+    simclr_collate_fn,
 )
 from src.data.fov import (
     DEFAULT_FOV_MARGIN,
@@ -66,8 +70,10 @@ from src.data.transforms import (
     DEFAULT_IMAGENET_STD,
     IMAGE_INTERPOLATION_MAP,
     RetinalSegmentationTransform,
+    SimCLRViewTransform,
     TransformConfigSummary,
     build_segmentation_transforms,
+    build_simclr_transforms,
 )
 
 __all__ = [
@@ -93,6 +99,8 @@ __all__ = [
     "PartitioningError",
     "RetinalLesionSegmentationDataset",
     "RetinalSegmentationTransform",
+    "SimCLRUnlabeledDataset",
+    "SimCLRViewTransform",
     "SPLIT_SORT_ORDER",
     "SUPPORTED_ARCHIVE_EXTENSIONS",
     "SUPPORTED_IMAGE_EXTENSIONS",
@@ -104,6 +112,8 @@ __all__ = [
     "build_dataset_manifest",
     "build_segmentation_dataloader",
     "build_segmentation_transforms",
+    "build_simclr_dataloader",
+    "build_simclr_transforms",
     "convert_raw_mask_to_binary",
     "crop_image_and_mask_to_fov",
     "derive_sample_stratum_key",
@@ -125,5 +135,7 @@ __all__ = [
     "partition_training_records",
     "save_manifest_json",
     "save_partition_manifest",
+    "select_ssl_training_records",
+    "simclr_collate_fn",
     "verify_client_partitions",
 ]

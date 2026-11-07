@@ -232,3 +232,54 @@ def test_unknown_config_section_rejected() -> None:
     with pytest.raises(ConfigValidationError, match="Unknown configuration section"):
         validate_config({"a": 1}, "nonexistent_section")
 
+
+def test_default_simclr_checkpoint_path_and_validation() -> None:
+    """Verify model.yaml ssl_checkpoint_path points to the canonical SimCLR encoder checkpoint and is validated (L-3)."""
+    model_cfg = load_yaml_config("model.yaml", validate=True)
+    assert (
+        model_cfg["ssl_checkpoint_path"]
+        == "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
+    )
+
+    with pytest.raises(ConfigValidationError, match=r"\[model\.yaml\].*ssl_checkpoint_path"):
+        validate_config({**model_cfg, "ssl_checkpoint_path": ""}, "model")
+
+    with pytest.raises(ConfigValidationError, match=r"\[model\.yaml\].*ssl_checkpoint_path"):
+        validate_config({**model_cfg, "ssl_checkpoint_path": 123}, "model")
+
+
+def test_portable_report_paths_and_format_project_path() -> None:
+    """Verify format_project_path normalizes paths and tracked JSON artifacts contain no machine-specific paths (H-1)."""
+    from src.utils.paths import format_project_path, get_project_root
+
+    root = get_project_root()
+    abs_target = root / "checkpoints" / "segmentation" / "best_checkpoint.pt"
+    assert (
+        format_project_path(abs_target)
+        == "checkpoints/segmentation/best_checkpoint.pt"
+    )
+    assert (
+        format_project_path(r"checkpoints\ssl\ddr_simclr\best_simclr_encoder.pt")
+        == "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
+    )
+    assert format_project_path(None) is None
+
+    tracked_json_files = [
+        *list((root / "data/processed/manifests").glob("*.json")),
+        *list((root / "data/partitions").glob("*.json")),
+        root / "logs/dataset_inventory.json",
+        root / "logs/supervised_baseline_ddr_report.json",
+        root / "logs/supervised_baseline_ddr_test_report.json",
+        root / "logs/simclr_preflight_report.json",
+        root / "logs/simclr_ddr_pretraining_report.json",
+        root / "logs/simclr_finetuned_ddr_report.json",
+    ]
+    for json_file in tracked_json_files:
+        assert json_file.is_file(), f"Expected tracked JSON artifact missing: {json_file}"
+        content = json_file.read_text(encoding="utf-8")
+        assert "\\" not in content, f"Backslash found in {json_file.name}"
+        assert "C:" not in content and "c:" not in content, (
+            f"Machine-specific drive path found in {json_file.name}"
+        )
+
+

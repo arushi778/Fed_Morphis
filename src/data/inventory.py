@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 from src.utils.config import load_yaml_config
-from src.utils.paths import resolve_project_path
+from src.utils.paths import format_project_path, resolve_project_path
 
 SUPPORTED_IMAGE_EXTENSIONS: tuple[str, ...] = (
     ".jpg",
@@ -324,7 +324,7 @@ def inspect_dataset_directory(
     root_path = Path(dataset_root)
     report: dict[str, Any] = {
         "dataset_name": dataset_name,
-        "root_path": str(root_path),
+        "root_path": format_project_path(root_path),
         "root_exists": root_path.exists() and root_path.is_dir(),
         "status": "missing_directory",
         "recognized_layout": "none",
@@ -637,17 +637,17 @@ def locate_dataset_candidates(
 
     # Collect any archives already discovered inside configured dataset roots
     for name, rep in configured_reports.items():
-        root_p = Path(rep["root_path"])
+        root_p = resolve_project_path(rep["root_path"])
         for rel_arch in rep.get("archive_files", []):
             arch_p = (root_p / rel_arch).resolve()
             if arch_p.exists() and arch_p not in seen_archives:
                 seen_archives.add(arch_p)
                 detected_archives.append(
                     {
-                        "path": str(arch_p),
+                        "path": format_project_path(arch_p),
                         "size_bytes": int(arch_p.stat().st_size),
                         "inferred_dataset": name,
-                        "target_directory": str(root_p),
+                        "target_directory": format_project_path(root_p),
                         "extraction_hint": get_archive_extraction_hint(arch_p, root_p),
                     }
                 )
@@ -668,10 +668,10 @@ def locate_dataset_candidates(
                 )
                 detected_archives.append(
                     {
-                        "path": str(p),
+                        "path": format_project_path(p),
                         "size_bytes": int(p.stat().st_size),
                         "inferred_dataset": affinity,
-                        "target_directory": str(target_dir),
+                        "target_directory": format_project_path(target_dir),
                         "extraction_hint": get_archive_extraction_hint(p, target_dir),
                     }
                 )
@@ -695,10 +695,10 @@ def locate_dataset_candidates(
                     )
                     detected_archives.append(
                         {
-                            "path": str(p),
+                            "path": format_project_path(p),
                             "size_bytes": int(p.stat().st_size),
                             "inferred_dataset": affinity,
-                            "target_directory": str(target_dir),
+                            "target_directory": format_project_path(target_dir),
                             "extraction_hint": get_archive_extraction_hint(p, target_dir),
                         }
                     )
@@ -717,14 +717,14 @@ def locate_dataset_candidates(
                 )
                 candidate_directories.append(
                     {
-                        "path": str(spath),
+                        "path": format_project_path(spath),
                         "inferred_dataset": affinity,
                         "recognized_layout": probe["recognized_layout"],
                         "image_count": probe["image_count"],
                         "mask_count": probe["mask_count"],
                         "image_directories": probe["image_directories"],
                         "mask_directories": probe["mask_directories"],
-                        "placement_target": str(target_dir),
+                        "placement_target": format_project_path(target_dir),
                     }
                 )
 

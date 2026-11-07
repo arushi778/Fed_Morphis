@@ -55,3 +55,26 @@ def resolve_project_path(relative_path: str | Path) -> Path:
         return rel
     return get_project_root() / rel
 
+
+def format_project_path(path: str | Path | None) -> str | None:
+    """Format a path as a portable project-relative POSIX string when inside the repository.
+
+    Converts Windows backslashes to forward slashes and strips the machine-specific
+    repository root prefix whenever ``path`` resolves inside ``get_project_root()``.
+    """
+    if path is None:
+        return None
+    raw_str = str(path).strip().replace("\\", "/")
+    if not raw_str:
+        return ""
+    p = Path(raw_str)
+    proj_root = get_project_root().resolve()
+    try:
+        resolved = p.resolve() if p.is_absolute() else (proj_root / p).resolve()
+        if resolved.is_relative_to(proj_root):
+            return resolved.relative_to(proj_root).as_posix()
+    except OSError:
+        pass
+    return p.as_posix()
+
+

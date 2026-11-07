@@ -1,0 +1,198 @@
+{
+  "status": "completed",
+  "phase": "Phase 2, Task 3 - Held-Out DDR Test Evaluation",
+  "checkpoint": {
+    "path": "checkpoints/segmentation/best_checkpoint.pt",
+    "epoch": 50,
+    "best_epoch": 50,
+    "global_step": 2400,
+    "monitor_metric": "val_dice_macro",
+    "best_validation_metric_value": 0.5581650813707222
+  },
+  "dataset": {
+    "manifest_path": "data/processed/manifests/ddr_manifest.json",
+    "split": "test",
+    "sample_count": 225,
+    "num_batches": 29,
+    "channel_order": [
+      "MA",
+      "HE",
+      "EX",
+      "SE"
+    ]
+  },
+  "evaluation_config": {
+    "seed": 42,
+    "deterministic": true,
+    "device": "cuda",
+    "amp_enabled": true,
+    "image_size": [
+      512,
+      512
+    ],
+    "batch_size": 8,
+    "fov_crop": true,
+    "metric_threshold": 0.5,
+    "evaluation_transforms": {
+      "resize_interpolation": "linear",
+      "mask_interpolation": "nearest",
+      "normalize": true
+    },
+    "normalization": {
+      "enabled": true,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "fov_crop": true,
+      "clahe_enhancement": false
+    },
+    "loss_config": {
+      "type": "bce_dice",
+      "bce_weight": 0.5,
+      "dice_weight": 0.5,
+      "smooth": 1e-05
+    }
+  },
+  "model": {
+    "architecture": "UNet",
+    "encoder": "resnet50",
+    "in_channels": 3,
+    "out_channels": 4,
+    "output_channel_order": [
+      "MA",
+      "HE",
+      "EX",
+      "SE"
+    ],
+    "decoder_channels": [
+      256,
+      128,
+      64,
+      32,
+      16
+    ],
+    "pretrained_requested": true,
+    "pretrained_weights_loaded": true,
+    "weights_status": "loaded_checkpoint:best_checkpoint.pt",
+    "total_parameters": 32521028,
+    "trainable_parameters": 32521028
+  },
+  "test_metrics": {
+    "loss": 0.2455817969308959,
+    "bce_loss": 0.013770433134502835,
+    "dice_loss": 0.47739316191938186,
+    "dice_macro": 0.4592104206936949,
+    "dice_macro_present_only": 0.4592104206936949,
+    "iou_macro": 0.3071067599889752,
+    "iou_macro_present_only": 0.3071067599889752,
+    "precision_macro": 0.5583531373732809,
+    "precision_macro_present_only": 0.5583531373732809,
+    "recall_macro": 0.4129690445343929,
+    "recall_macro_present_only": 0.4129690445343929,
+    "sensitivity_macro": 0.4129690445343929,
+    "sensitivity_macro_present_only": 0.4129690445343929,
+    "specificity_macro": 0.999422453206448,
+    "specificity_macro_present_only": 0.999422453206448,
+    "present_classes": [
+      "MA",
+      "HE",
+      "EX",
+      "SE"
+    ],
+    "absent_classes": [],
+    "macro": {
+      "dice": 0.4592104206936949,
+      "iou": 0.3071067599889752,
+      "precision": 0.5583531373732809,
+      "recall": 0.4129690445343929,
+      "sensitivity": 0.4129690445343929,
+      "specificity": 0.999422453206448
+    },
+    "macro_present_only": {
+      "dice": 0.4592104206936949,
+      "iou": 0.3071067599889752,
+      "precision": 0.5583531373732809,
+      "recall": 0.4129690445343929,
+      "sensitivity": 0.4129690445343929,
+      "specificity": 0.999422453206448
+    },
+    "per_class": {
+      "MA": {
+        "dice": 0.2464097654380086,
+        "iou": 0.14051730021156078,
+        "precision": 0.1930704674386985,
+        "recall": 0.34047126911947084,
+        "sensitivity": 0.34047126911947084,
+        "specificity": 0.9997081412415961,
+        "tp": 4118,
+        "fp": 17211,
+        "fn": 7977,
+        "tn": 58953094,
+        "target_present": true,
+        "prediction_present": true,
+        "empty_handling": "standard_non_empty"
+      },
+      "HE": {
+        "dice": 0.4597104010641794,
+        "iou": 0.2984571222072728,
+        "precision": 0.6551223447163216,
+        "recall": 0.3540910224952343,
+        "sensitivity": 0.3540910224952343,
+        "specificity": 0.9986860750884627,
+        "tp": 146184,
+        "fp": 76956,
+        "fn": 266659,
+        "tn": 58492601,
+        "target_present": true,
+        "prediction_present": true,
+        "empty_handling": "standard_non_empty"
+      },
+      "EX": {
+        "dice": 0.5962748672426091,
+        "iou": 0.4247803600063238,
+        "precision": 0.7602519621383097,
+        "recall": 0.4904835379767467,
+        "sensitivity": 0.4904835379767467,
+        "specificity": 0.9993942878005253,
+        "tp": 112848,
+        "fp": 35587,
+        "fn": 117227,
+        "tn": 58716738,
+        "target_present": true,
+        "prediction_present": true,
+        "empty_handling": "standard_non_empty"
+      },
+      "SE": {
+        "dice": 0.5344466490299824,
+        "iou": 0.3646722575307435,
+        "precision": 0.6249677751997937,
+        "recall": 0.46683034854611977,
+        "sensitivity": 0.46683034854611977,
+        "specificity": 0.9999013086952077,
+        "tp": 9697,
+        "fp": 5819,
+        "fn": 11075,
+        "tn": 58955809,
+        "target_present": true,
+        "prediction_present": true,
+        "empty_handling": "standard_non_empty"
+      }
+    }
+  },
+  "evaluation_duration_sec": 8.9146,
+  "gpu_memory": {
+    "cuda_used": true,
+    "device_name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+    "max_memory_allocated_bytes": 2877533184,
+    "max_memory_allocated_mb": 2744.23,
+    "max_memory_reserved_bytes": 4636803072,
+    "max_memory_reserved_mb": 4422.0
+  }
+}

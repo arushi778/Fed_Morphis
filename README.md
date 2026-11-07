@@ -276,19 +276,49 @@ data/raw/
 
 ---
 
-## 10. Current Implementation Status
+## 10. Supervised U-Net + ResNet-50 Baseline (`Phase 2, Task 1`)
 
-- **Current Phase**: **Phase 1, Task 4 — PyTorch Dataset, DataLoader, Transforms, and Federated Client Partitions (Completed)**
+### 10.1 Architecture, Loss, Metrics & Trainer
+- **U-Net + ResNet-50 (`src/models/unet.py`)**:
+  - `ResNet50UNet` maps RGB fundus tensors `(B, 3, H, W)` (`torch.float32`) to raw segmentation logits `(B, 4, H, W)` in canonical `["MA", "HE", "EX", "SE"]` order (`32,521,028` trainable parameters).
+  - Supports ImageNet pretrained weights (`pretrained=True`), offline/random initialization (`pretrained=False`), and SSL encoder checkpoints (`encoder_weights_source="ssl_checkpoint"`). Explicitly records `model.pretrained_weights_loaded` and `model.weights_status` without ever silently claiming pretrained weights were loaded when unavailable.
+- **Multilabel BCE + Soft Dice Loss (`src/models/losses.py`)**:
+  - `BCEDiceLoss` combines channel-independent `BCEWithLogitsLoss` and `SoftDiceLoss` (`bce_weight=0.5, dice_weight=0.5, smooth=1e-5`), remaining numerically finite even when all or individual lesion channels are empty (`0`).
+- **Evaluation Metrics & Empty-Mask Policy (`src/models/metrics.py`)**:
+  - `compute_segmentation_metrics` and `SegmentationMetricTracker` compute per-class (`MA`, `HE`, `EX`, `SE`) and macro-averaged (`macro` and `macro_present_only`) **Dice**, **IoU**, **Precision**, **Recall**, **Sensitivity**, and **Specificity** at configurable probability threshold (`0.5`).
+  - Enforces an explicit, documented empty-mask policy (`both_empty_exact_match` $\rightarrow 1.0$; `target_empty_false_positive` $\rightarrow 0.0$; `prediction_empty_false_negative` $\rightarrow 0.0$) and reports `present_classes` and `absent_classes` so missing lesion classes in validation subsets are never hidden.
+- **Supervised Trainer (`src/engine/trainer.py`)**:
+  - `SupervisedSegmentationTrainer` supports `AdamW` / `Adam` / `SGD`, `torch.amp` mixed precision on CUDA, gradient norm clipping, `latest_checkpoint.pt` and `best_checkpoint.pt` persistence/resumption, and strict runtime enforcement (`TestSplitLeakageError`) that `test` split samples are never used during training or model selection.
+
+### 10.2 Running the Baseline CLI & Smoke Test (`scripts/train_baseline.py`)
+
+```powershell
+# Run the real-data GPU smoke test on DDR + IDRiD (1 train step + 1 val step, batch_size=2, 512x512)
+.\.venv311\Scripts\python.exe scripts\train_baseline.py --smoke-test --no-pretrained --batch-size 2 --image-size 512
+
+# Run a single-batch dry-run verification pass
+.\.venv311\Scripts\python.exe scripts\train_baseline.py --dry-run --no-pretrained --batch-size 2 --image-size 512
+
+# Run the U-Net baseline unit test suite
+.\.venv311\Scripts\python.exe -m pytest tests\test_unet_baseline.py -v
+```
+
+---
+
+## 11. Current Implementation Status
+
+- **Current Phase**: **Phase 2, Task 1 — Supervised U-Net + ResNet-50 Segmentation Baseline (Completed)**
   - [x] **Phase 0 Complete**: Environment inspection, modular structure, YAML configs, reproducibility (`set_seed`, `seed_worker`), device management (`resolve_device`, `get_device_info`), structured logging (`get_logger`), config validation (`validate_all_configs`), and CUDA 12.8 stack verification in `.venv311`.
   - [x] **Phase 1, Tasks 1, 2 & 3A Complete**: Dataset inventory, archive detector, candidate locator (`src/data/inventory.py`, `scripts/inspect_datasets.py`), and real-data audit report (`logs/dataset_inventory.json`, `docs/data_inventory.md`).
   - [x] **Phase 1, Task 3B Complete**: Canonical 4-channel `[MA, HE, EX, SE]` binary mask builder (`src/data/masks.py`), retinal FOV detector and synchronized cropper (`src/data/fov.py`), reproducible dataset manifests (`src/data/manifests.py`, `scripts/build_manifests.py`, `data/processed/manifests/*.json`), and unit tests (`tests/test_masks_fov_manifests.py`).
   - [x] **Phase 1, Task 4 Complete**: PyTorch `RetinalLesionSegmentationDataset` and `build_segmentation_dataloader` (`src/data/dataset.py`), Albumentations 2.0.8 transforms (`src/data/transforms.py`), IID / Dirichlet / Cross-Dataset federated client partitioning (`src/data/partitioning.py`, `scripts/build_partitions.py`, `data/partitions/*.json`), and unit tests (`tests/test_dataset_transforms_partitions.py`).
-  - [ ] ResNet-50 U-Net & SimCLR implementation (Not started — Phase 2/3).
-  - [ ] Flower Federated Learning implementation (Not started — Phase 4/5).
+  - [x] **Phase 2, Task 1 Complete**: Supervised `ResNet50UNet` architecture (`src/models/unet.py`), `BCEDiceLoss` (`src/models/losses.py`), `SegmentationMetricTracker` (`src/models/metrics.py`), `SupervisedSegmentationTrainer` (`src/engine/trainer.py`), CLI (`scripts/train_baseline.py`), and unit tests (`tests/test_unet_baseline.py`).
+  - [ ] SimCLR Self-Supervised Pretraining implementation (Next — Phase 2, Task 2).
+  - [ ] Flower Federated Learning implementation (Phase 4/5).
 
 ---
 
-## 11. Future Implementation Phases
+## 12. Future Implementation Phases
 
 - **Phase 1 — Data Engineering & Partitioning**: DDR and IDRiD dataset adapters, Field-of-View (FOV) cropping, Albumentations pipelines, and IID / Dirichlet / Cross-Center federated split generators.
 - **Phase 2 — Self-Supervised Pretraining (SimCLR)**: Contrastive data pairs, ResNet-50 encoder + MLP projection head, NT-Xent loss, and centralized SSL pretraining loop.

@@ -20,6 +20,7 @@ from __future__ import annotations
 import importlib
 import os
 import random
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -135,4 +136,112 @@ def seed_worker(worker_id: int) -> None:
 
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+
+def capture_rng_state(dataloader_generator: Any | None = None) -> dict[str, Any]:
+    """Capture a snapshot of Python, NumPy, PyTorch, CUDA, and DataLoader generator RNG states.
+
+    Args:
+        dataloader_generator: Optional :class:`torch.Generator` attached to a DataLoader.
+
+    Returns:
+        Dictionary of serializable RNG states suitable for checkpoint persistence.
+    """
+    state: dict[str, Any] = {
+        "python_random_state": random.getstate(),
+        "numpy_random_state": np.random.get_state(),
+        "torch_rng_state": None,
+        "cuda_rng_state_all": None,
+        "dataloader_generator_state": None,
+    }
+    torch = _get_torch()
+    if torch is not None:
+        if hasattr(torch, "get_rng_state"):
+            state["torch_rng_state"] = torch.get_rng_state().clone()
+        cuda_mod = getattr(torch, "cuda", None)
+        if (
+            cuda_mod is not None
+            and hasattr(cuda_mod, "is_available")
+            and cuda_mod.is_available()
+            and hasattr(cuda_mod, "get_rng_state_all")
+        ):
+            try:
+                state["cuda_rng_state_all"] = [
+                    s.clone() for s in cuda_mod.get_rng_state_all()
+                ]
+            except Exception:
+                state["cuda_rng_state_all"] = None
+        if dataloader_generator is not None and hasattr(
+            dataloader_generator, "get_state"
+        ):
+            state["dataloader_generator_state"] = (
+                dataloader_generator.get_state().clone()
+            )
+    return state
+
+
+def restore_rng_state(
+    rng_state: Mapping[str, Any] | None,
+    dataloader_generator: Any | None = None,
+) -> bool:
+    """Restore Python, NumPy, PyTorch, CUDA, and DataLoader generator RNG states from a checkpoint.
+
+    Safely returns ``False`` without raising if ``rng_state`` is ``None`` or absent
+    (preserving backward compatibility with legacy checkpoints).
+    """
+    if not isinstance(rng_state, Mapping) or len(rng_state) == 0:
+        return False
+
+    restored_any = False
+    py_state = rng_state.get("python_random_state")
+    if py_state is not None:
+        random.setstate(py_state)
+        restored_any = True
+
+    np_state = rng_state.get("numpy_random_state")
+    if np_state is not None:
+        np.random.set_state(np_state)
+        restored_any = True
+
+    torch = _get_torch()
+    if torch is not None:
+        torch_state = rng_state.get("torch_rng_state")
+        if torch_state is not None and hasattr(torch, "set_rng_state"):
+            if hasattr(torch_state, "to"):
+                torch_state = torch_state.to(device="cpu", dtype=torch.uint8)
+            torch.set_rng_state(torch_state)
+            restored_any = True
+
+        cuda_states = rng_state.get("cuda_rng_state_all")
+        cuda_mod = getattr(torch, "cuda", None)
+        if (
+            cuda_states is not None
+            and cuda_mod is not None
+            and hasattr(cuda_mod, "is_available")
+            and cuda_mod.is_available()
+            and hasattr(cuda_mod, "set_rng_state_all")
+        ):
+            try:
+                cpu_cuda_states = [
+                    s.to(device="cpu", dtype=torch.uint8) if hasattr(s, "to") else s
+                    for s in cuda_states
+                ]
+                cuda_mod.set_rng_state_all(cpu_cuda_states)
+                restored_any = True
+            except Exception:
+                pass
+
+        dl_gen_state = rng_state.get("dataloader_generator_state")
+        if (
+            dataloader_generator is not None
+            and dl_gen_state is not None
+            and hasattr(dataloader_generator, "set_state")
+        ):
+            if hasattr(dl_gen_state, "to"):
+                dl_gen_state = dl_gen_state.to(device="cpu", dtype=torch.uint8)
+            dataloader_generator.set_state(dl_gen_state)
+            restored_any = True
+
+    return restored_any
+
 

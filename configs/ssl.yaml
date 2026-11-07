@@ -1,28 +1,45 @@
-# Self-Supervised Learning (SimCLR) Configuration (Placeholder for Phase 2 implementation)
+# Self-Supervised Learning (SimCLR) Configuration (Phase 3, Task 1)
 method: "SimCLR"
 backbone: "resnet50"
+input_channels: 3
+pretrained: true
+strict_pretrained: false
+encoder_weights_source: "imagenet"
+supervised_checkpoint_path: "checkpoints/segmentation/best_checkpoint.pt"
+random_seed: 42
 
-# Projection head settings
+# Projection head settings (2-layer MLP: Linear(2048, 2048) -> ReLU -> Linear(2048, 128))
 projection_dimension: 128
 projection_hidden_dimension: 2048
+projection_use_batchnorm: false
 
 # Contrastive loss (NT-Xent) settings
 temperature: 0.5
 normalize_projections: true
 
-# Optimization settings
+# Pretraining optimization & runtime settings
+batch_size: 16
+epochs: 50
+optimizer: "adamw"
 learning_rate: 0.0003
 weight_decay: 0.0001
-optimizer: "adamw"
 lr_scheduler: "cosine_annealing"
-warmup_epochs: 10
-epochs: 100
-batch_size: 32
+warmup_epochs: 5
+mixed_precision: true
+gradient_clip_max_norm: 1.0
+checkpoint_directory: "checkpoints/ssl"
 
-# SimCLR view augmentation settings (placeholder)
+# SimCLR two-view augmentation settings
 augmentations:
-  random_resized_crop_scale: [0.2, 1.0]
-  color_distortion_strength: 0.5
-  gaussian_blur_prob: 0.5
+  image_size: 512
+  random_resized_crop_scale: [0.5, 1.0]
   horizontal_flip_prob: 0.5
-
+  vertical_flip_prob: 0.5
+  random_rotate90_prob: 0.5
+  color_jitter_prob: 0.8
+  color_distortion_strength: 0.5
+  brightness: 0.2
+  contrast: 0.2
+  saturation: 0.2
+  hue: 0.05
+  gaussian_blur_prob: 0.5
