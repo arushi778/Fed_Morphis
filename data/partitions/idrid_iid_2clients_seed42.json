@@ -1,0 +1,5006 @@
+{
+  "schema_version": "1.0",
+  "strategy": "iid",
+  "num_clients": 2,
+  "seed": 42,
+  "dirichlet_alpha": null,
+  "min_samples_per_client": 1,
+  "source_datasets": [
+    "IDRiD"
+  ],
+  "total_train_samples": 54,
+  "held_out_validation_samples": 0,
+  "held_out_test_samples": 27,
+  "verification": {
+    "all_train_samples_assigned_once": true,
+    "clients_disjoint": true,
+    "total_assigned_train_samples": 54,
+    "expected_train_samples": 54,
+    "lost_train_sample_count": 0,
+    "validation_leakage_count": 0,
+    "test_leakage_count": 0
+  },
+  "client_summaries": {
+    "client_0": {
+      "num_samples": 27,
+      "dataset_counts": {
+        "IDRiD": 27
+      },
+      "positive_lesion_counts": {
+        "MA": 27,
+        "HE": 27,
+        "EX": 27,
+        "SE": 15
+      },
+      "stratum_counts": {
+        "IDRiD:EX": 11,
+        "IDRiD:HE": 10,
+        "IDRiD:MA": 1,
+        "IDRiD:SE": 5
+      },
+      "sample_ids": [
+        "IDRiD:IDRiD_05",
+        "IDRiD:IDRiD_06",
+        "IDRiD:IDRiD_08",
+        "IDRiD:IDRiD_10",
+        "IDRiD:IDRiD_18",
+        "IDRiD:IDRiD_19",
+        "IDRiD:IDRiD_21",
+        "IDRiD:IDRiD_22",
+        "IDRiD:IDRiD_24",
+        "IDRiD:IDRiD_25",
+        "IDRiD:IDRiD_26",
+        "IDRiD:IDRiD_27",
+        "IDRiD:IDRiD_28",
+        "IDRiD:IDRiD_29",
+        "IDRiD:IDRiD_30",
+        "IDRiD:IDRiD_32",
+        "IDRiD:IDRiD_35",
+        "IDRiD:IDRiD_38",
+        "IDRiD:IDRiD_40",
+        "IDRiD:IDRiD_41",
+        "IDRiD:IDRiD_42",
+        "IDRiD:IDRiD_46",
+        "IDRiD:IDRiD_49",
+        "IDRiD:IDRiD_50",
+        "IDRiD:IDRiD_51",
+        "IDRiD:IDRiD_52",
+        "IDRiD:IDRiD_54"
+      ]
+    },
+    "client_1": {
+      "num_samples": 27,
+      "dataset_counts": {
+        "IDRiD": 27
+      },
+      "positive_lesion_counts": {
+        "MA": 27,
+        "HE": 26,
+        "EX": 27,
+        "SE": 11
+      },
+      "stratum_counts": {
+        "IDRiD:EX": 15,
+        "IDRiD:HE": 12
+      },
+      "sample_ids": [
+        "IDRiD:IDRiD_01",
+        "IDRiD:IDRiD_02",
+        "IDRiD:IDRiD_03",
+        "IDRiD:IDRiD_04",
+        "IDRiD:IDRiD_07",
+        "IDRiD:IDRiD_09",
+        "IDRiD:IDRiD_11",
+        "IDRiD:IDRiD_12",
+        "IDRiD:IDRiD_13",
+        "IDRiD:IDRiD_14",
+        "IDRiD:IDRiD_15",
+        "IDRiD:IDRiD_16",
+        "IDRiD:IDRiD_17",
+        "IDRiD:IDRiD_20",
+        "IDRiD:IDRiD_23",
+        "IDRiD:IDRiD_31",
+        "IDRiD:IDRiD_33",
+        "IDRiD:IDRiD_34",
+        "IDRiD:IDRiD_36",
+        "IDRiD:IDRiD_37",
+        "IDRiD:IDRiD_39",
+        "IDRiD:IDRiD_43",
+        "IDRiD:IDRiD_44",
+        "IDRiD:IDRiD_45",
+        "IDRiD:IDRiD_47",
+        "IDRiD:IDRiD_48",
+        "IDRiD:IDRiD_53"
+      ]
+    }
+  },
+  "clients": {
+    "client_0": [
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_05",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_05.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_05_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_05_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_05_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 3994,
+          "HE": 9850,
+          "EX": 8286,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 248,
+          "x_max": 3848,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3600,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_06",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_06.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_06_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_06_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_06_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 9923,
+          "HE": 25507,
+          "EX": 59053,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3711,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3431,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_08",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_08.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_08_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_08_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_08_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_08_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 4188,
+          "HE": 37203,
+          "EX": 20368,
+          "SE": 38340
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3705,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_10",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_10.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_10_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_10_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_10_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 33484,
+          "HE": 92658,
+          "EX": 805250,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 30,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3698,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3420,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_18",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_18.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_18_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_18_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_18_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_18_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 24706,
+          "HE": 89854,
+          "EX": 106281,
+          "SE": 40970
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 74,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_19",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_19.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_19_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_19_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_19_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_19_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 6092,
+          "HE": 62604,
+          "EX": 17431,
+          "SE": 81903
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_21",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_21.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_21_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_21_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_21_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 21573,
+          "HE": 102308,
+          "EX": 192428,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_22",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_22.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_22_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_22_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_22_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_22_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 10367,
+          "HE": 254991,
+          "EX": 94020,
+          "SE": 108091
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 109,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3698,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3418,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_24",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_24.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_24_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_24_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_24_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 1354,
+          "HE": 27085,
+          "EX": 8245,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3418,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_25",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_25.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_25_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_25_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_25_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_25_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 23423,
+          "HE": 332458,
+          "EX": 616742,
+          "SE": 23030
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 270,
+          "x_max": 3695,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_26",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_26.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_26_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_26_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_26_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 19627,
+          "HE": 104527,
+          "EX": 2506,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_27",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_27.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_27_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_27_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_27_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 25746,
+          "HE": 65344,
+          "EX": 69734,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 3,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_28",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_28.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_28_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_28_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_28_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 4805,
+          "HE": 32395,
+          "EX": 4725,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3419,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_29",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_29.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_29_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_29_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_29_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 4525,
+          "HE": 2149,
+          "EX": 2343,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_30",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_30.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_30_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_30_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_30_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_30_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 7308,
+          "HE": 53438,
+          "EX": 22501,
+          "SE": 14627
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_32",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_32.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_32_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_32_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_32_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_32_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 6068,
+          "HE": 86486,
+          "EX": 84975,
+          "SE": 39910
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_35",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_35.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_35_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_35_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_35_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_35_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 13997,
+          "HE": 368997,
+          "EX": 19873,
+          "SE": 41300
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 3,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_38",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_38.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_38_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_38_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_38_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_38_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 9359,
+          "HE": 14028,
+          "EX": 12551,
+          "SE": 18516
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 256,
+          "x_max": 3776,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3520,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_40",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_40.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_40_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_40_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_40_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 6592,
+          "HE": 3642,
+          "EX": 7779,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3419,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_41",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_41.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_41_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_41_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_41_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 5486,
+          "HE": 4266,
+          "EX": 8250,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_42",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_42.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_42_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_42_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_42_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 2522,
+          "HE": 4404,
+          "EX": 25201,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_46",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_46.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_46_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_46_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_46_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_46_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 11628,
+          "HE": 192856,
+          "EX": 21191,
+          "SE": 100367
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 55,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3418,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_49",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_49.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_49_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_49_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_49_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_49_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 16520,
+          "HE": 178309,
+          "EX": 221897,
+          "SE": 42441
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 402,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 269,
+          "x_max": 3689,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3420,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_50",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_50.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_50_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_50_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_50_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_50_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 5202,
+          "HE": 34176,
+          "EX": 120675,
+          "SE": 36775
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 240,
+          "x_max": 3695,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3455,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_51",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_51.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_51_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_51_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_51_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_51_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 14362,
+          "HE": 48296,
+          "EX": 19228,
+          "SE": 78562
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 269,
+          "x_max": 3689,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3420,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_52",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_52.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_52_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_52_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_52_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_52_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 6671,
+          "HE": 3354,
+          "EX": 2974,
+          "SE": 9750
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 269,
+          "x_max": 3689,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3420,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_54",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_54.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_54_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_54_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_54_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_54_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 24011,
+          "HE": 38734,
+          "EX": 9450,
+          "SE": 30804
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 262,
+          "x_max": 3686,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3424,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      }
+    ],
+    "client_1": [
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_01",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_01.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_01_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_01_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_01_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 6941,
+          "HE": 35430,
+          "EX": 113286,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 47,
+          "x_max": 4288,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 4241,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_02",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_02.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_02_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_02_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_02_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 9446,
+          "HE": 17356,
+          "EX": 135394,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 14,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 264,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3432,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_03",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_03.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_03_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_03_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_03_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_03_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 11288,
+          "HE": 162605,
+          "EX": 301586,
+          "SE": 3318
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 16,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 6,
+          "x_max": 4095,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 4089,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_04",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_04.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_04_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_04_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_04_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 804,
+          "HE": 59383,
+          "EX": 5557,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 104,
+          "x_max": 3907,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3803,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_07",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_07.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_07_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_07_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_07_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 12623,
+          "HE": 31951,
+          "EX": 167489,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 17,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 270,
+          "x_max": 3888,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3618,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_09",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_09.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_09_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_09_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_09_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 35141,
+          "HE": 84849,
+          "EX": 254276,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_11",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_11.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_11_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_11_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_11_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 21345,
+          "HE": 56797,
+          "EX": 291123,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 138,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3695,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3423,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_12",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_12.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_12_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_12_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_12_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 3952,
+          "HE": 26843,
+          "EX": 6626,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 99,
+          "x_max": 3909,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3810,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_13",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_13.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_13_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_13_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_13_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_13_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 34267,
+          "HE": 37412,
+          "EX": 214397,
+          "SE": 71243
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3702,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3430,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_14",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_14.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_14_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_14_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_14_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_14_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 25362,
+          "HE": 62616,
+          "EX": 165659,
+          "SE": 10855
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_15",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_15.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_15_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_15_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_15_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 2042,
+          "HE": 3215,
+          "EX": 42697,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3698,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3426,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_16",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_16.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_16_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_16_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_16_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 3872,
+          "HE": 18663,
+          "EX": 115804,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_17",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_17.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_17_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_17_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_17_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_17_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 14207,
+          "HE": 1821322,
+          "EX": 201316,
+          "SE": 48111
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 18,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_20",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_20.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_20_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_20_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_20_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 26027,
+          "HE": 66672,
+          "EX": 183732,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 1,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3698,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3426,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_23",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_23.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_23_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_23_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_23_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_23_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 4531,
+          "HE": 111482,
+          "EX": 14812,
+          "SE": 59663
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3419,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_31",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_31.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_31_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_31_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_31_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_31_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 8156,
+          "HE": 216935,
+          "EX": 48998,
+          "SE": 158077
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 1072,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3698,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3420,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_33",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_33.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_33_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_33_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_33_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_33_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 36212,
+          "HE": 330744,
+          "EX": 58229,
+          "SE": 5571
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 19,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 278,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3419,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_34",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_34.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_34_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_34_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_34_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 12563,
+          "HE": 415359,
+          "EX": 26720,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3417,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_36",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_36.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_36_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_36_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_36_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 9857,
+          "HE": 58339,
+          "EX": 5893,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_37",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_37.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_37_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_37_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_37_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 6464,
+          "HE": 50017,
+          "EX": 25759,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 104,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3424,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_39",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_39.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_39_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_39_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_39_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_39_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 38066,
+          "HE": 250350,
+          "EX": 18733,
+          "SE": 85288
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 31,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_43",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_43.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_43_MA.tif",
+          "HE": null,
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_43_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "HE",
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "HE",
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 914,
+          "HE": 0,
+          "EX": 61341,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": null,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": null,
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 272,
+          "x_max": 3697,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3425,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_44",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_44.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_44_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_44_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_44_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 1932,
+          "HE": 5906,
+          "EX": 24798,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 1,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_45",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_45.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_45_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_45_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_45_EX.tif",
+          "SE": null
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "missing_lesion_masks": [
+          "SE"
+        ],
+        "synthesized_zero_channels": [
+          "SE"
+        ],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX"
+        ],
+        "has_missing_masks": true,
+        "lesion_pixel_counts": {
+          "MA": 2548,
+          "HE": 13236,
+          "EX": 47341,
+          "SE": 0
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": null
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": null
+        },
+        "overlapping_pixel_count": 1,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 280,
+          "x_max": 3696,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3416,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_47",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_47.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_47_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_47_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_47_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_47_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 3986,
+          "HE": 68527,
+          "EX": 38582,
+          "SE": 33761
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 0,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 144,
+          "x_max": 3882,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3738,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_48",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_48.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_48_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_48_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_48_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_48_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 22353,
+          "HE": 133197,
+          "EX": 154434,
+          "SE": 58746
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 112,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 216,
+          "x_max": 3839,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 3623,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      },
+      {
+        "dataset_name": "IDRiD",
+        "sample_id": "IDRiD_53",
+        "split": "train",
+        "image_path": "data/raw/IDRiD/A. Segmentation/1. Original Images/a. Training Set/IDRiD_53.jpg",
+        "mask_paths": {
+          "MA": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_53_MA.tif",
+          "HE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_53_HE.tif",
+          "EX": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_53_EX.tif",
+          "SE": "data/raw/IDRiD/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_53_SE.tif"
+        },
+        "channel_order": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "present_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "missing_lesion_masks": [],
+        "synthesized_zero_channels": [],
+        "empty_lesion_masks": [],
+        "positive_lesion_masks": [
+          "MA",
+          "HE",
+          "EX",
+          "SE"
+        ],
+        "has_missing_masks": false,
+        "lesion_pixel_counts": {
+          "MA": 26531,
+          "HE": 91360,
+          "EX": 10985,
+          "SE": 9022
+        },
+        "source_mask_channels": {
+          "MA": 1,
+          "HE": 1,
+          "EX": 1,
+          "SE": 1
+        },
+        "source_mask_encodings": {
+          "MA": [
+            0,
+            1
+          ],
+          "HE": [
+            0,
+            1
+          ],
+          "EX": [
+            0,
+            1
+          ],
+          "SE": [
+            0,
+            1
+          ]
+        },
+        "overlapping_pixel_count": 12,
+        "image_dimensions": {
+          "height": 2848,
+          "width": 4288,
+          "channels": 3
+        },
+        "canonical_mask_dimensions": [
+          2848,
+          4288,
+          4
+        ],
+        "fov_crop": {
+          "y_min": 0,
+          "y_max": 2848,
+          "x_min": 16,
+          "x_max": 4264,
+          "original_height": 2848,
+          "original_width": 4288,
+          "cropped_height": 2848,
+          "cropped_width": 4248,
+          "threshold": 10,
+          "margin": 0,
+          "fallback_used": false,
+          "fallback_reason": null,
+          "boundary_expanded_for_mask": false,
+          "lesion_pixels_outside_fov": 0
+        }
+      }
+    ]
+  }
+}

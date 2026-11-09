@@ -305,16 +305,91 @@ data/raw/
 
 ---
 
-## 11. Current Implementation Status
+## 11. Flower Federated Learning (`Phase 4`)
 
-- **Current Phase**: **Phase 2, Task 1 — Supervised U-Net + ResNet-50 Segmentation Baseline (Completed)**
-  - [x] **Phase 0 Complete**: Environment inspection, modular structure, YAML configs, reproducibility (`set_seed`, `seed_worker`), device management (`resolve_device`, `get_device_info`), structured logging (`get_logger`), config validation (`validate_all_configs`), and CUDA 12.8 stack verification in `.venv311`.
-  - [x] **Phase 1, Tasks 1, 2 & 3A Complete**: Dataset inventory, archive detector, candidate locator (`src/data/inventory.py`, `scripts/inspect_datasets.py`), and real-data audit report (`logs/dataset_inventory.json`, `docs/data_inventory.md`).
-  - [x] **Phase 1, Task 3B Complete**: Canonical 4-channel `[MA, HE, EX, SE]` binary mask builder (`src/data/masks.py`), retinal FOV detector and synchronized cropper (`src/data/fov.py`), reproducible dataset manifests (`src/data/manifests.py`, `scripts/build_manifests.py`, `data/processed/manifests/*.json`), and unit tests (`tests/test_masks_fov_manifests.py`).
-  - [x] **Phase 1, Task 4 Complete**: PyTorch `RetinalLesionSegmentationDataset` and `build_segmentation_dataloader` (`src/data/dataset.py`), Albumentations 2.0.8 transforms (`src/data/transforms.py`), IID / Dirichlet / Cross-Dataset federated client partitioning (`src/data/partitioning.py`, `scripts/build_partitions.py`, `data/partitions/*.json`), and unit tests (`tests/test_dataset_transforms_partitions.py`).
-  - [x] **Phase 2, Task 1 Complete**: Supervised `ResNet50UNet` architecture (`src/models/unet.py`), `BCEDiceLoss` (`src/models/losses.py`), `SegmentationMetricTracker` (`src/models/metrics.py`), `SupervisedSegmentationTrainer` (`src/engine/trainer.py`), CLI (`scripts/train_baseline.py`), and unit tests (`tests/test_unet_baseline.py`).
-  - [ ] SimCLR Self-Supervised Pretraining implementation (Next — Phase 2, Task 2).
-  - [ ] Flower Federated Learning implementation (Phase 4/5).
+### 11.1 Federated Learning Architecture
+FedMorphis implements cross-institutional federated retinal lesion segmentation using **Flower (`flwr 1.43.0`)**:
+- **Client Data Module (`src/federated/data.py`)**: Resolves client partition assignments from `data/partitions/combined_cross_dataset_2clients_seed42.json`, builds canonical 4-channel `[MA, HE, EX, SE]` segmentation datasets and `DataLoader`s, applies training augmentations only to training splits, and enforces zero overlap or test-split leakage.
+- **Flower `NumPyClient` (`src/federated/client.py`)**: `FedMorphisNumPyClient` wraps `ResNet50UNet` and `SupervisedSegmentationTrainer`, serializing and validating `state_dict` parameters and BatchNorm buffers losslessly across Flower `Parameters` protobuf messages.
+- **Custom FedAvg Strategy (`src/federated/strategy.py`)**: `FedMorphisFedAvg` subclasses `flwr.server.strategy.FedAvg` with strict shape, dtype, and finiteness validation, sample-weighted parameter aggregation, explicit integer buffer handling, and atomic global checkpointing.
+- **Flower Server Orchestration (`src/federated/server.py`)**: `InProcessClientProxy`, `build_federated_server`, and `run_federated_training` orchestrate multi-round training and distributed client validation through `flwr.server.Server` and `SimpleClientManager`.
+
+### 11.2 Client Assignments & Validation Policy (`official_and_carved`)
+In the two-client cross-dataset configuration (`seed=42`):
+- **Client 0 (`client_0` — DDR)**:
+  - **Local Training**: `383` official DDR training records.
+  - **Local Validation**: `149` official DDR validation records.
+  - **Held-Out Test**: `225` official DDR test records (never used during federated training or checkpoint selection).
+- **Client 1 (`client_1` — IDRiD)**:
+  - **Local Training**: `44` IDRiD training records (after carving `20%` from the `54` official IDRiD training records).
+  - **Local Validation**: `10` deterministically carved IDRiD validation records (`val_carve_ratio: 0.2`, `seed: 42`).
+  - **Held-Out Test**: `27` official IDRiD test records (completely untouched during training and validation).
+
+### 11.3 FedAvg Aggregation Policy
+- **Floating-Point Parameters & BatchNorm Statistics (`weight`, `bias`, `running_mean`, `running_var`)**: Aggregated via sample-count-weighted averaging across participating clients:
+  $$w^{(t)} = \sum_{k=1}^{K} \frac{n_k}{\sum_{j=1}^{K} n_j} w_k^{(t)}$$
+- **Integer BatchNorm Counters (`num_batches_tracked`, `dtype=int64`)**: Aggregated using an explicit integer buffer policy (`"max"` across participating clients by default), preserving exact `np.int64` dtype without floating-point averaging or rounding.
+- **Buffer Sharing (`share_batchnorm_buffers`)**: Configurable via `configs/federated.yaml` or `--share-batchnorm-buffers` / `--no-share-batchnorm-buffers`.
+- **Metric Aggregation**: Computes sample-weighted averages across clients, unweighted client-macro averages (`macro_client_*`), and per-client metrics (`client_0_DDR_*`, `client_1_IDRiD_*`).
+
+### 11.4 Global Model Initialization Options
+Configured under `initialization` in `configs/federated.yaml` (or via CLI flags):
+1. **ImageNet-Pretrained ResNet-50 Encoder** (default): `--encoder-weights-source imagenet`
+2. **SimCLR Self-Supervised Encoder Checkpoint**: `--encoder-weights-source ssl_checkpoint --ssl-checkpoint-path checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt`
+3. **Full Segmentation Checkpoint**: `--initial-checkpoint-path <path/to/checkpoint.pt>`
+4. **Random Initialization**: `--no-pretrained` (or `--encoder-weights-source random`)
+
+### 11.5 Dataset Requirements
+Before running federated training or evaluation on real data, ensure the following generated manifests exist:
+- `data/processed/manifests/ddr_manifest.json`
+- `data/processed/manifests/idrid_manifest.json`
+- `data/processed/manifests/combined_manifest.json`
+- `data/partitions/combined_cross_dataset_2clients_seed42.json`
+
+### 11.6 Federated Training Command (`scripts/train_federated.py`)
+
+```powershell
+# Run federated training using configs/federated.yaml
+python scripts/train_federated.py --config configs/federated.yaml
+
+# Override rounds, local epochs, seed, device, or initialization source
+python scripts/train_federated.py --config configs/federated.yaml --rounds 20 --local-epochs 3 --seed 42 --device cuda
+
+# Initialize global encoder from the SimCLR SSL checkpoint
+python scripts/train_federated.py --config configs/federated.yaml --encoder-weights-source ssl_checkpoint --ssl-checkpoint-path checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt
+```
+
+### 11.7 Global Checkpoint Evaluation & Final Held-Out Test Evaluation (`scripts/evaluate_federated.py`)
+- **Validation Split Evaluation**:
+  ```powershell
+  python scripts/evaluate_federated.py --checkpoint checkpoints/federated/best_checkpoint.pt --split valid
+  ```
+- **Final Held-Out Test Evaluation (Separate DDR and IDRiD Reporting)**:
+  Held-out `test` data is never used during training or model selection. To evaluate the selected global checkpoint on the official DDR (`225` samples) and IDRiD (`27` samples) held-out test splits separately:
+  ```powershell
+  python scripts/evaluate_federated.py --checkpoint checkpoints/federated/best_checkpoint.pt --split test --datasets ddr idrid --report-path logs/federated_fedavg_test_evaluation_report.json
+  ```
+  Results are reported separately under `datasets.DDR` and `datasets.IDRiD` (never pooled across datasets), including loss, macro Dice, macro IoU, and per-lesion (`MA`, `HE`, `EX`, `SE`) Dice and IoU.
+
+### 11.8 Checkpoint and Report Locations
+- **Global Checkpoints**:
+  - `checkpoints/federated/best_checkpoint.pt` (monitored on finite `val_dice_macro`)
+  - `checkpoints/federated/latest_checkpoint.pt` (saved atomically after each round)
+- **JSON Reports**:
+  - Training report: `logs/federated_fedavg_ddr_idrid_report.json`
+  - Held-out test evaluation report: `logs/federated_fedavg_test_evaluation_report.json`
+  - Validation evaluation report: `logs/federated_fedavg_val_evaluation_report.json`
+
+---
+
+## 12. Current Implementation Status
+
+- **Current Phase**: **Phase 4 — Flower Federated Learning (Tasks 1–5 Completed)**
+  - [x] **Phase 0 Complete**: Environment inspection, modular structure, YAML configs, reproducibility (`set_seed`, `seed_worker`), device management (`resolve_device`, `get_device_info`), structured logging (`get_logger`), config validation (`validate_all_configs`), and CUDA stack verification.
+  - [x] **Phase 1 Complete**: Dataset inventory (`src/data/inventory.py`), canonical 4-channel `[MA, HE, EX, SE]` mask builder (`src/data/masks.py`), retinal FOV cropper (`src/data/fov.py`), dataset manifests (`src/data/manifests.py`), `RetinalLesionSegmentationDataset` (`src/data/dataset.py`), Albumentations transforms (`src/data/transforms.py`), and federated partitioning (`src/data/partitioning.py`).
+  - [x] **Phase 2 Complete**: Supervised `ResNet50UNet` baseline (`src/models/unet.py`), `BCEDiceLoss` (`src/models/losses.py`), `SegmentationMetricTracker` (`src/models/metrics.py`), `SupervisedSegmentationTrainer` (`src/engine/trainer.py`), and evaluator (`src/engine/evaluator.py`).
+  - [x] **Phase 3 Complete**: SimCLR self-supervised representation pretraining (`src/ssl/`, `scripts/pretrain_simclr.py`) and segmentation fine-tuning.
+  - [x] **Phase 4 Complete (Tasks 1–5)**: Flower 1.43.0 two-client DDR + IDRiD configuration (`configs/federated.yaml`), federated client data module (`src/federated/data.py`), `FedMorphisNumPyClient` (`src/federated/client.py`), custom `FedMorphisFedAvg` strategy (`src/federated/strategy.py`), Flower server orchestration (`src/federated/server.py`), training and evaluation CLIs (`scripts/train_federated.py`, `scripts/evaluate_federated.py`), and automated test suites (`tests/test_federated_*.py`).
 
 ---
 

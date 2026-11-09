@@ -1,19 +1,33 @@
 # Federated Learning Configuration (Flower) (Phase 1 Partitioning + Phase 4/5 Training)
+framework: "flower"
 strategy: "FedAvg"  # Supported options: "FedAvg", "FedProx"
+aggregation_strategy: "fedavg"
 aggregation_method: "weighted_average"
 
-# Topology & client scheduling
-number_of_clients: 4
+# Reproducibility seed
+seed: 42
+
+# Topology & client scheduling (2-client cross-dataset setup: Client 0 = DDR, Client 1 = IDRiD)
+number_of_clients: 2
 client_fraction: 1.0
 min_fit_clients: 2
 min_evaluate_clients: 2
 min_available_clients: 2
 
 # Training schedule
+rounds: 20
 communication_rounds: 20
 local_epochs: 3
 local_batch_size: 8
 local_learning_rate: 0.0001
+num_workers: 0
+share_batchnorm_buffers: true
+
+# Client validation policy ("official_and_carved" or "full_train_shared_val")
+# Under "official_and_carved": DDR uses 383 train / 149 official valid;
+# IDRiD deterministically carves 20% (10 records) from its 54 train records for validation (44 train / 10 valid).
+val_split_mode: "official_and_carved"
+val_carve_ratio: 0.2
 
 # FedProx proximal term hyperparameter (used when strategy == "FedProx")
 fedprox_mu: 0.01
@@ -21,11 +35,35 @@ fedprox_mu: 0.01
 # Reproducible client data partitioning across official training splits only
 # Supported schemes: "iid", "dirichlet" ("non_iid"), "cross_dataset" ("by_dataset")
 partitioning:
-  scheme: "dirichlet"
+  scheme: "cross_dataset"
   seed: 42
   dirichlet_alpha: 0.5
   min_samples_per_client: 1
   output_directory: "data/partitions"
+  manifest_path: "data/partitions/combined_cross_dataset_2clients_seed42.json"
+
+# Global model initialization settings
+initialization:
+  pretrained: true
+  strict_pretrained: false
+  encoder_weights_source: "imagenet"
+  ssl_checkpoint_path: "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
+  initial_checkpoint_path: null
+
+# Checkpointing, logging, and reporting paths (relative to project root)
+checkpoint_directory: "checkpoints/federated"
+logs_directory: "logs"
+report_path: "logs/federated_fedavg_ddr_idrid_report.json"
+
+checkpointing:
+  save_dir: "checkpoints/federated"
+  monitor_metric: "val_dice_macro"
+  monitor_mode: "max"
+  save_every_round: 1
+
+logging:
+  logs_dir: "logs"
+  report_path: "logs/federated_fedavg_ddr_idrid_report.json"
 
 # Federated training mode ("segmentation" or "ssl")
 federated_mode: "segmentation"

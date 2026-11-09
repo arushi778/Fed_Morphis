@@ -24,6 +24,12 @@ CONFIG_FILES: tuple[str, ...] = (
 )
 
 SUPPORTED_FEDERATED_STRATEGIES: tuple[str, ...] = ("FedAvg", "FedProx")
+SUPPORTED_FEDERATED_FRAMEWORKS: tuple[str, ...] = ("flower",)
+SUPPORTED_AGGREGATION_STRATEGIES: tuple[str, ...] = ("fedavg", "fedprox")
+SUPPORTED_VAL_SPLIT_MODES: tuple[str, ...] = (
+    "official_and_carved",
+    "full_train_shared_val",
+)
 SUPPORTED_PARTITION_STRATEGIES: tuple[str, ...] = (
     "iid",
     "dirichlet",
@@ -618,6 +624,16 @@ def validate_federated_config(config: Mapping[str, Any]) -> None:
         ctx,
     )
 
+    if "framework" in cfg:
+        framework_val = _require_non_empty_str(
+            cfg["framework"], "framework", ctx
+        ).lower()
+        if framework_val not in SUPPORTED_FEDERATED_FRAMEWORKS:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'framework' must be one of {SUPPORTED_FEDERATED_FRAMEWORKS}, "
+                f"got {cfg['framework']!r}."
+            )
+
     strategy = _require_non_empty_str(cfg["strategy"], "strategy", ctx)
     if strategy not in SUPPORTED_FEDERATED_STRATEGIES:
         raise ConfigValidationError(
@@ -625,8 +641,22 @@ def validate_federated_config(config: Mapping[str, Any]) -> None:
             f"got {strategy!r}."
         )
 
-    _require_int(cfg["number_of_clients"], "number_of_clients", ctx, min_value=1)
+    if "aggregation_strategy" in cfg:
+        agg_strat = _require_non_empty_str(
+            cfg["aggregation_strategy"], "aggregation_strategy", ctx
+        ).lower()
+        if agg_strat not in SUPPORTED_AGGREGATION_STRATEGIES:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'aggregation_strategy' must be one of "
+                f"{SUPPORTED_AGGREGATION_STRATEGIES}, got {cfg['aggregation_strategy']!r}."
+            )
+
+    num_clients = _require_int(
+        cfg["number_of_clients"], "number_of_clients", ctx, min_value=1
+    )
     _require_int(cfg["communication_rounds"], "communication_rounds", ctx, min_value=1)
+    if "rounds" in cfg:
+        _require_int(cfg["rounds"], "rounds", ctx, min_value=1)
     _require_int(cfg["local_epochs"], "local_epochs", ctx, min_value=1)
     _require_number(
         cfg["client_fraction"],
@@ -637,6 +667,71 @@ def validate_federated_config(config: Mapping[str, Any]) -> None:
         strict_min=True,
     )
     _require_non_empty_str(cfg["aggregation_method"], "aggregation_method", ctx)
+
+    for client_bound_key in (
+        "min_fit_clients",
+        "min_evaluate_clients",
+        "min_available_clients",
+    ):
+        if client_bound_key in cfg:
+            _require_int(
+                cfg[client_bound_key],
+                client_bound_key,
+                ctx,
+                min_value=1,
+                max_value=num_clients,
+            )
+
+    if "seed" in cfg:
+        _require_int(
+            cfg["seed"],
+            "seed",
+            ctx,
+            min_value=0,
+            max_value=MAX_UINT32_SEED,
+        )
+
+    if "local_batch_size" in cfg:
+        _require_int(cfg["local_batch_size"], "local_batch_size", ctx, min_value=1)
+
+    if "local_learning_rate" in cfg:
+        _require_number(
+            cfg["local_learning_rate"],
+            "local_learning_rate",
+            ctx,
+            min_value=0.0,
+            strict_min=True,
+        )
+
+    if "num_workers" in cfg:
+        _require_int(cfg["num_workers"], "num_workers", ctx, min_value=0)
+
+    if "share_batchnorm_buffers" in cfg:
+        _require_bool(cfg["share_batchnorm_buffers"], "share_batchnorm_buffers", ctx)
+
+    if "val_split_mode" in cfg:
+        val_mode = _require_non_empty_str(
+            cfg["val_split_mode"], "val_split_mode", ctx
+        ).lower()
+        if val_mode not in SUPPORTED_VAL_SPLIT_MODES:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'val_split_mode' must be one of "
+                f"{SUPPORTED_VAL_SPLIT_MODES}, got {cfg['val_split_mode']!r}."
+            )
+
+    if "val_carve_ratio" in cfg:
+        ratio = _require_number(
+            cfg["val_carve_ratio"],
+            "val_carve_ratio",
+            ctx,
+            min_value=0.0,
+            max_value=1.0,
+            strict_min=True,
+        )
+        if ratio >= 1.0:
+            raise ConfigValidationError(
+                f"[{ctx}] Field 'val_carve_ratio' must be in (0.0, 1.0), got {cfg['val_carve_ratio']}."
+            )
 
     if "fedprox_mu" in cfg:
         _require_number(cfg["fedprox_mu"], "fedprox_mu", ctx, min_value=0.0)
@@ -676,6 +771,94 @@ def validate_federated_config(config: Mapping[str, Any]) -> None:
                 ctx,
                 min_value=1,
             )
+        if "output_directory" in part:
+            _require_non_empty_str(
+                part["output_directory"], "partitioning.output_directory", ctx
+            )
+        if "manifest_path" in part and part["manifest_path"] is not None:
+            _require_non_empty_str(
+                part["manifest_path"], "partitioning.manifest_path", ctx
+            )
+
+    if "initialization" in cfg:
+        init_cfg = _require_mapping(cfg["initialization"], f"{ctx}:initialization")
+        if "pretrained" in init_cfg:
+            _require_bool(init_cfg["pretrained"], "initialization.pretrained", ctx)
+        if "strict_pretrained" in init_cfg:
+            _require_bool(
+                init_cfg["strict_pretrained"], "initialization.strict_pretrained", ctx
+            )
+        if "encoder_weights_source" in init_cfg:
+            src_val = _require_non_empty_str(
+                init_cfg["encoder_weights_source"],
+                "initialization.encoder_weights_source",
+                ctx,
+            )
+            if src_val not in SUPPORTED_ENCODER_WEIGHT_SOURCES:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'initialization.encoder_weights_source' must be one of "
+                    f"{SUPPORTED_ENCODER_WEIGHT_SOURCES}, got {src_val!r}."
+                )
+        if (
+            "ssl_checkpoint_path" in init_cfg
+            and init_cfg["ssl_checkpoint_path"] is not None
+        ):
+            _require_non_empty_str(
+                init_cfg["ssl_checkpoint_path"],
+                "initialization.ssl_checkpoint_path",
+                ctx,
+            )
+        if (
+            "initial_checkpoint_path" in init_cfg
+            and init_cfg["initial_checkpoint_path"] is not None
+        ):
+            _require_non_empty_str(
+                init_cfg["initial_checkpoint_path"],
+                "initialization.initial_checkpoint_path",
+                ctx,
+            )
+
+    for path_key in ("checkpoint_directory", "logs_directory", "report_path", "log_path"):
+        if path_key in cfg and cfg[path_key] is not None:
+            _require_non_empty_str(cfg[path_key], path_key, ctx)
+
+    if "checkpointing" in cfg:
+        ckpt_cfg = _require_mapping(cfg["checkpointing"], f"{ctx}:checkpointing")
+        if "save_dir" in ckpt_cfg:
+            _require_non_empty_str(
+                ckpt_cfg["save_dir"], "checkpointing.save_dir", ctx
+            )
+        if "monitor_metric" in ckpt_cfg:
+            _require_non_empty_str(
+                ckpt_cfg["monitor_metric"], "checkpointing.monitor_metric", ctx
+            )
+        if "monitor_mode" in ckpt_cfg:
+            m_mode = _require_non_empty_str(
+                ckpt_cfg["monitor_mode"], "checkpointing.monitor_mode", ctx
+            ).lower()
+            if m_mode not in SUPPORTED_MONITOR_MODES:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'checkpointing.monitor_mode' must be one of "
+                    f"{SUPPORTED_MONITOR_MODES}, got {ckpt_cfg['monitor_mode']!r}."
+                )
+        if "save_every_round" in ckpt_cfg:
+            _require_int(
+                ckpt_cfg["save_every_round"],
+                "checkpointing.save_every_round",
+                ctx,
+                min_value=1,
+            )
+
+    if "logging" in cfg:
+        log_cfg = _require_mapping(cfg["logging"], f"{ctx}:logging")
+        if "logs_dir" in log_cfg:
+            _require_non_empty_str(log_cfg["logs_dir"], "logging.logs_dir", ctx)
+        if "report_path" in log_cfg and log_cfg["report_path"] is not None:
+            _require_non_empty_str(log_cfg["report_path"], "logging.report_path", ctx)
+        if "log_path" in log_cfg and log_cfg["log_path"] is not None:
+            _require_non_empty_str(log_cfg["log_path"], "logging.log_path", ctx)
+        if "log_level" in log_cfg and log_cfg["log_level"] is not None:
+            _require_non_empty_str(log_cfg["log_level"], "logging.log_level", ctx)
 
 
 def validate_experiment_config(config: Mapping[str, Any]) -> None:

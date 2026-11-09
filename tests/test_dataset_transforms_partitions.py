@@ -738,3 +738,88 @@ def test_simclr_cache_resizing_preserves_aspect_ratio_for_nonsquare_images(
     assert cached_rgb.shape[1] / cached_rgb.shape[0] == pytest.approx(2.0)
 
 
+def test_two_client_cross_dataset_partition_assignment_and_manifest_integrity() -> None:
+    """Verify 2-client cross_dataset partitioning assigns DDR to client_0 and IDRiD to client_1 with 0 leakage."""
+    from src.data.manifests import load_manifest_json
+    from src.data.partitioning import verify_client_partitions
+    from src.utils.paths import resolve_project_path
+
+    # 1. Synthetic verification
+    records = _build_synthetic_multi_split_records()
+    syn_part = partition_training_records(
+        records, num_clients=2, strategy="cross_dataset", seed=42
+    )
+    assert syn_part["num_clients"] == 2
+    assert set(syn_part["clients"].keys()) == {"client_0", "client_1"}
+    assert syn_part["client_summaries"]["client_0"]["dataset_counts"] == {"DDR": 20}
+    assert syn_part["client_summaries"]["client_1"]["dataset_counts"] == {"IDRiD": 8}
+    assert syn_part["verification"]["all_train_samples_assigned_once"] is True
+    assert syn_part["verification"]["clients_disjoint"] is True
+    assert syn_part["verification"]["validation_leakage_count"] == 0
+    assert syn_part["verification"]["test_leakage_count"] == 0
+
+    # 2. Real generated partition manifest verification against combined_manifest.json
+    part_path = resolve_project_path(
+        "data/partitions/combined_cross_dataset_2clients_seed42.json"
+    )
+    combined_path = resolve_project_path(
+        "data/processed/manifests/combined_manifest.json"
+    )
+    assert part_path.is_file(), f"Missing partition manifest: {part_path}"
+    assert combined_path.is_file(), f"Missing combined manifest: {combined_path}"
+
+    loaded_part = load_partition_manifest(part_path)
+    recomputed_part = partition_training_records(
+        combined_path, num_clients=2, strategy="cross_dataset", seed=42
+    )
+
+    # Reproducibility with seed 42
+    assert loaded_part == recomputed_part
+    assert loaded_part["strategy"] == "cross_dataset"
+    assert loaded_part["num_clients"] == 2
+    assert loaded_part["seed"] == 42
+    assert list(loaded_part["clients"].keys()) == ["client_0", "client_1"]
+
+    # Client 0: DDR training records only (383)
+    c0_records = loaded_part["clients"]["client_0"]
+    assert len(c0_records) == 383
+    assert loaded_part["client_summaries"]["client_0"]["num_samples"] == 383
+    assert loaded_part["client_summaries"]["client_0"]["dataset_counts"] == {"DDR": 383}
+    assert all(
+        r["dataset_name"] == "DDR" and r["split"] == "train" for r in c0_records
+    )
+
+    # Client 1: IDRiD training records only (54)
+    c1_records = loaded_part["clients"]["client_1"]
+    assert len(c1_records) == 54
+    assert loaded_part["client_summaries"]["client_1"]["num_samples"] == 54
+    assert loaded_part["client_summaries"]["client_1"]["dataset_counts"] == {
+        "IDRiD": 54
+    }
+    assert all(
+        r["dataset_name"] == "IDRiD" and r["split"] == "train" for r in c1_records
+    )
+
+    # Full split-hygiene & integrity check against combined_manifest.json
+    combined_manifest = load_manifest_json(combined_path)
+    all_recs = combined_manifest["records"]
+    expected_train = [r for r in all_recs if r["split"] == "train"]
+    held_out_valid = [r for r in all_recs if r["split"] == "valid"]
+    held_out_test = [r for r in all_recs if r["split"] == "test"]
+
+    assert len(expected_train) == 437
+    assert len(held_out_valid) == 149
+    assert len(held_out_test) == 252
+
+    ver = verify_client_partitions(
+        client_records=loaded_part["clients"],
+        expected_train_records=expected_train,
+        held_out_valid_records=held_out_valid,
+        held_out_test_records=held_out_test,
+    )
+    assert ver["all_train_samples_assigned_once"] is True
+    assert ver["clients_disjoint"] is True
+    assert ver["total_assigned_train_samples"] == 437
+    assert ver["lost_train_sample_count"] == 0
+    assert ver["validation_leakage_count"] == 0
+    assert ver["test_leakage_count"] == 0

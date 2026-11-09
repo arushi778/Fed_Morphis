@@ -309,6 +309,10 @@ class SupervisedSegmentationTrainer:
         train_loader: DataLoader[Any],
         epoch: int = 1,
         max_batches: int | None = None,
+        *,
+        progress_prefix: str | None = None,
+        log_interval: int | None = None,
+        progress_logger: logging.Logger | None = None,
     ) -> dict[str, Any]:
         """Run one training epoch and return loss and metric summary."""
         verify_no_test_split_leakage(train_loader, stage_name="train")
@@ -327,6 +331,22 @@ class SupervisedSegmentationTrainer:
         batches_processed = 0
         grad_norm_last = 0.0
         start_time = time.perf_counter()
+
+        try:
+            loader_len = int(len(train_loader))
+        except TypeError:
+            loader_len = 0
+        total_expected_batches = (
+            min(loader_len, int(max_batches))
+            if (max_batches is not None and loader_len > 0)
+            else loader_len
+        )
+        effective_log_interval = (
+            int(log_interval)
+            if (log_interval is not None and log_interval > 0)
+            else max(1, total_expected_batches // 4) if total_expected_batches > 0 else 10
+        )
+        active_logger = progress_logger if progress_logger is not None else logger
 
         for batch_idx, batch in enumerate(train_loader):
             if max_batches is not None and batch_idx >= max_batches:
@@ -393,6 +413,45 @@ class SupervisedSegmentationTrainer:
             total_samples += batch_size
             batches_processed += 1
             self.global_step += 1
+
+            if progress_prefix is not None:
+                should_log_batch = (
+                    batches_processed == 1
+                    or (batches_processed % effective_log_interval == 0)
+                    or (
+                        total_expected_batches > 0
+                        and batches_processed == total_expected_batches
+                    )
+                )
+                if should_log_batch:
+                    running_loss = total_loss_sum / max(1, total_samples)
+                    elapsed_batch = time.perf_counter() - start_time
+                    batch_denom = (
+                        f"{batches_processed}/{total_expected_batches}"
+                        if total_expected_batches > 0
+                        else f"{batches_processed}"
+                    )
+                    pct_str = (
+                        f" ({100.0 * batches_processed / total_expected_batches:5.1f}%)"
+                        if total_expected_batches > 0
+                        else ""
+                    )
+                    gpu_mem_str = ""
+                    if self.device.type == "cuda" and torch.cuda.is_available():
+                        alloc_mb = torch.cuda.memory_allocated(self.device) / (1024**2)
+                        peak_mb = torch.cuda.max_memory_allocated(self.device) / (1024**2)
+                        gpu_mem_str = f" | gpu_mem={alloc_mb:.1f}MB (peak={peak_mb:.1f}MB)"
+                    active_logger.info(
+                        "%s | batch %s%s | samples=%d | batch_loss=%.4f | running_loss=%.4f | elapsed=%.2fs%s",
+                        progress_prefix,
+                        batch_denom,
+                        pct_str,
+                        total_samples,
+                        loss_scalar,
+                        running_loss,
+                        elapsed_batch,
+                        gpu_mem_str,
+                    )
 
         if batches_processed == 0 or total_samples == 0:
             raise ValueError("train_loader produced zero batches during train_one_epoch.")

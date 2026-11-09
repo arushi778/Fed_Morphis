@@ -69,6 +69,29 @@ def resolve_log_level(level: str | int) -> int:
     return level
 
 
+class _FlushingStreamHandler(logging.StreamHandler):  # type: ignore[type-arg]
+    """StreamHandler that writes to current ``sys.stdout`` and flushes after every record."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if self.stream is None or getattr(self.stream, "closed", False) or self.stream is not sys.stdout:
+            self.stream = sys.stdout
+        super().emit(record)
+        self.flush()
+
+    def flush(self) -> None:
+        if self.stream is None or getattr(self.stream, "closed", False):
+            return
+        super().flush()
+
+
+class _FlushingRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that flushes the file stream after every emitted log record."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        super().emit(record)
+        self.flush()
+
+
 def _create_formatter() -> logging.Formatter:
     """Create the standard FedMorphis log formatter."""
     return logging.Formatter(fmt=DEFAULT_LOG_FORMAT, datefmt=DEFAULT_DATE_FORMAT)
@@ -142,10 +165,12 @@ def get_logger(
     if console:
         if existing_console_handlers:
             for h in existing_console_handlers:
+                if isinstance(h, logging.StreamHandler):
+                    h.stream = sys.stdout
                 h.setLevel(resolved_level)
                 h.setFormatter(formatter)
         else:
-            stream_handler = logging.StreamHandler(sys.stdout)
+            stream_handler = _FlushingStreamHandler(sys.stdout)
             stream_handler.setLevel(resolved_level)
             stream_handler.setFormatter(formatter)
             setattr(stream_handler, "_fedmorphis_kind", "console")
@@ -187,7 +212,7 @@ def get_logger(
             matching_handler.setLevel(resolved_level)
             matching_handler.setFormatter(formatter)
         else:
-            file_handler = RotatingFileHandler(
+            file_handler = _FlushingRotatingFileHandler(
                 filename=target_path,
                 maxBytes=max_bytes,
                 backupCount=backup_count,
@@ -222,3 +247,60 @@ def configure_logging(
         file_logging=file_logging,
     )
 
+
+FEDERATED_LOGGER_NAMES: tuple[str, ...] = (
+    DEFAULT_LOGGER_NAME,
+    "fedmorphis.federated",
+    "fedmorphis.federated.server",
+    "fedmorphis.federated.strategy",
+    "fedmorphis.federated.client",
+    "fedmorphis.federated.data",
+    "fedmorphis.federated.cli",
+    "fedmorphis.train_federated",
+    "fedmorphis.trainer",
+    "fedmorphis.evaluator",
+    "fedmorphis.engine.trainer",
+    "fedmorphis.engine.evaluator",
+    "src.federated.server",
+    "src.federated.strategy",
+    "src.federated.client",
+    "src.federated.data",
+)
+
+
+def configure_federated_logging(
+    level: str | int = "INFO",
+    log_path: str | Path | None = None,
+    console: bool = True,
+) -> Path:
+    """Configure all federated workflow loggers to stream to stdout and ``log_path``.
+
+    Parameters
+    ----------
+    level : str | int
+        Logging level (e.g. ``"INFO"``, ``"DEBUG"``).
+    log_path : str | Path | None
+        Explicit log file path. If ``None``, defaults to ``logs/federated_train.log``.
+    console : bool
+        Whether to emit real-time logs to ``sys.stdout``.
+
+    Returns
+    -------
+    Path
+        Resolved absolute path to the persistent log file.
+    """
+    resolved_log_path = (
+        Path(log_path).expanduser().resolve()
+        if log_path is not None
+        else (DEFAULT_LOG_DIR / "federated_train.log").resolve()
+    )
+    resolved_log_path.parent.mkdir(parents=True, exist_ok=True)
+    for logger_name in FEDERATED_LOGGER_NAMES:
+        get_logger(
+            name=logger_name,
+            level=level,
+            log_file=resolved_log_path,
+            console=console,
+            file_logging=True,
+        )
+    return resolved_log_path

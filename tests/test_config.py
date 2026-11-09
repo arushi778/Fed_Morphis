@@ -283,3 +283,49 @@ def test_portable_report_paths_and_format_project_path() -> None:
         )
 
 
+def test_two_client_federated_config_defaults_and_validation() -> None:
+    """Verify two-client Flower federated.yaml settings load and validate properly."""
+    fed_cfg = load_yaml_config("federated.yaml", validate=True)
+
+    assert fed_cfg["framework"] == "flower"
+    assert fed_cfg["aggregation_strategy"] == "fedavg"
+    assert fed_cfg["strategy"] == "FedAvg"
+    assert fed_cfg["number_of_clients"] == 2
+    assert fed_cfg["rounds"] >= 1
+    assert fed_cfg["local_epochs"] >= 1
+    assert fed_cfg["client_fraction"] == 1.0
+    assert fed_cfg["min_fit_clients"] == 2
+    assert fed_cfg["min_evaluate_clients"] == 2
+    assert fed_cfg["min_available_clients"] == 2
+    assert fed_cfg["seed"] == 42
+    assert fed_cfg["val_split_mode"] == "official_and_carved"
+    assert fed_cfg["val_carve_ratio"] == pytest.approx(0.2)
+    assert fed_cfg["share_batchnorm_buffers"] is True
+    assert fed_cfg["partitioning"]["scheme"] == "cross_dataset"
+    assert fed_cfg["partitioning"]["seed"] == 42
+    assert (
+        fed_cfg["partitioning"]["manifest_path"]
+        == "data/partitions/combined_cross_dataset_2clients_seed42.json"
+    )
+    assert fed_cfg["initialization"]["encoder_weights_source"] == "imagenet"
+    assert fed_cfg["checkpoint_directory"] == "checkpoints/federated"
+    assert fed_cfg["logs_directory"] == "logs"
+    assert fed_cfg["report_path"].startswith("logs/")
+
+    with pytest.raises(ConfigValidationError, match=r"\[federated\.yaml\].*framework"):
+        validate_config({**fed_cfg, "framework": "nvflare"}, "federated")
+
+    with pytest.raises(
+        ConfigValidationError, match=r"\[federated\.yaml\].*min_fit_clients"
+    ):
+        validate_config({**fed_cfg, "min_fit_clients": 5}, "federated")
+
+    with pytest.raises(
+        ConfigValidationError, match=r"\[federated\.yaml\].*val_split_mode"
+    ):
+        validate_config({**fed_cfg, "val_split_mode": "invalid_mode"}, "federated")
+
+    with pytest.raises(
+        ConfigValidationError, match=r"\[federated\.yaml\].*val_carve_ratio"
+    ):
+        validate_config({**fed_cfg, "val_carve_ratio": 1.0}, "federated")
