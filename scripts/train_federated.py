@@ -29,7 +29,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.federated.server import (
+    FederatedPreflightError,
     FederatedServerRunResult,
+    run_federated_preflight,
     run_federated_training,
 )
 from src.utils.config import (
@@ -271,6 +273,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Disable in-memory caching of FOV-cropped dataset samples.",
     )
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Run preflight validation checks and exit without starting federated training.",
+    )
     return parser.parse_args(list(argv) if argv is not None else None)
 
 
@@ -442,8 +449,64 @@ def load_and_validate_federated_cli_configs(
     }
 
 
+def run_preflight_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    """Validate configuration overrides and execute preflight validation checks."""
+    configs = load_and_validate_federated_cli_configs(args)
+
+    fed_cfg = configs["federated"]
+    proj_cfg = configs["project"]
+    ds_cfg = configs["dataset"]
+    mdl_cfg = configs["model"]
+    exp_cfg = configs["experiment"]
+
+    log_path_arg = getattr(args, "log_path", None) or fed_cfg.get(
+        "logging", {}
+    ).get("log_path", fed_cfg.get("log_path"))
+    log_level_arg = str(
+        getattr(args, "log_level", None)
+        or fed_cfg.get("logging", {}).get("log_level", "INFO")
+    ).upper()
+
+    seed = int(fed_cfg.get("seed", proj_cfg.get("random_seed", 42)))
+    target_device = resolve_device(str(proj_cfg.get("device", "auto")))
+
+    img_cfg = ds_cfg.get("image_size", {"height": 512, "width": 512})
+    if isinstance(img_cfg, Mapping):
+        image_size = (int(img_cfg.get("height", 512)), int(img_cfg.get("width", 512)))
+    else:
+        image_size = (512, 512)
+
+    return run_federated_preflight(
+        federated_config=fed_cfg,
+        dataset_config=ds_cfg,
+        model_config=mdl_cfg,
+        project_config=proj_cfg,
+        experiment_config=exp_cfg,
+        experiment_name=args.experiment_name,
+        num_rounds=int(fed_cfg.get("rounds", 20)),
+        partition_manifest=args.partition_manifest,
+        source_manifest=args.source_manifest,
+        checkpoint_dir=args.checkpoint_dir,
+        report_path=args.report_path,
+        log_path=log_path_arg,
+        log_level=log_level_arg,
+        include_buffers=bool(fed_cfg.get("share_batchnorm_buffers", True)),
+        local_epochs=int(fed_cfg.get("local_epochs", 3)),
+        batch_size=int(fed_cfg.get("local_batch_size", 8)),
+        val_batch_size=args.val_batch_size,
+        num_workers=int(fed_cfg.get("num_workers", 0)),
+        learning_rate=float(fed_cfg.get("local_learning_rate", 1e-4)),
+        seed=seed,
+        device=target_device,
+        image_size=image_size,
+        verify_files_exist=True,
+        protect_pilot_outputs=True,
+        require_cuda=(str(proj_cfg.get("device", "auto")).strip().lower() == "cuda"),
+    )
+
+
 def run_from_args(args: argparse.Namespace) -> FederatedServerRunResult:
-    """Validate configuration overrides and execute federated training."""
+    """Validate configuration overrides, run preflight checks, and execute federated training."""
     configs = load_and_validate_federated_cli_configs(args)
 
     fed_cfg = configs["federated"]
@@ -479,6 +542,34 @@ def run_from_args(args: argparse.Namespace) -> FederatedServerRunResult:
         image_size = (int(img_cfg.get("height", 512)), int(img_cfg.get("width", 512)))
     else:
         image_size = (512, 512)
+
+    run_federated_preflight(
+        federated_config=fed_cfg,
+        dataset_config=ds_cfg,
+        model_config=mdl_cfg,
+        project_config=proj_cfg,
+        experiment_config=exp_cfg,
+        experiment_name=args.experiment_name,
+        num_rounds=int(fed_cfg.get("rounds", 20)),
+        partition_manifest=args.partition_manifest,
+        source_manifest=args.source_manifest,
+        checkpoint_dir=args.checkpoint_dir,
+        report_path=args.report_path,
+        log_path=log_path_arg,
+        log_level=log_level_arg,
+        include_buffers=bool(fed_cfg.get("share_batchnorm_buffers", True)),
+        local_epochs=int(fed_cfg.get("local_epochs", 3)),
+        batch_size=int(fed_cfg.get("local_batch_size", 8)),
+        val_batch_size=args.val_batch_size,
+        num_workers=int(fed_cfg.get("num_workers", 0)),
+        learning_rate=float(fed_cfg.get("local_learning_rate", 1e-4)),
+        seed=seed,
+        device=target_device,
+        image_size=image_size,
+        verify_files_exist=True,
+        protect_pilot_outputs=True,
+        require_cuda=(str(proj_cfg.get("device", "auto")).strip().lower() == "cuda"),
+    )
 
     logger.info(
         "Starting Flower FedAvg federated training (rounds=%d, local_epochs=%d, clients=%d, seed=%d, device=%s, cuda_available=%s)",
@@ -539,6 +630,11 @@ def run_from_args(args: argparse.Namespace) -> FederatedServerRunResult:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point for Flower federated segmentation training."""
     args = parse_args(argv)
+    if getattr(args, "preflight_only", False):
+        preflight_summary = run_preflight_from_args(args)
+        print(json.dumps(preflight_summary, indent=2))
+        return 0
+
     result = run_from_args(args)
     report_dict = result.to_report_dict()
 

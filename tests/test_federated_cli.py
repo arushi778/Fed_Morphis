@@ -699,3 +699,187 @@ def test_federated_realtime_logging_and_log_file_output(
     for (k1, t1), (k2, t2) in zip(model_logged.state_dict().items(), model_nolog.state_dict().items()):
         assert k1 == k2
         assert torch.allclose(t1, t2, atol=1e-6)
+
+
+def test_federated_preflight_only_cli_and_guardrails(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify --preflight-only validates datasets, model, output writability, and pilot isolation without training."""
+    from src.federated.server import FederatedPreflightError
+
+    (
+        combined_manifest_path,
+        _ddr_manifest_path,
+        _idrid_manifest_path,
+        partition_manifest_path,
+    ) = _create_synthetic_manifests_on_disk(tmp_path)
+
+    ckpt_dir = tmp_path / "preflight_ckpts"
+    report_path = tmp_path / "preflight_report.json"
+    log_path = tmp_path / "preflight.log"
+
+    preflight_args = [
+        "--config",
+        "configs/federated.yaml",
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--source-manifest",
+        str(combined_manifest_path),
+        "--rounds",
+        "20",
+        "--local-epochs",
+        "3",
+        "--batch-size",
+        "2",
+        "--val-batch-size",
+        "2",
+        "--image-size",
+        "32",
+        "--seed",
+        "42",
+        "--device",
+        "cpu",
+        "--no-pretrained",
+        "--checkpoint-dir",
+        str(ckpt_dir),
+        "--report-path",
+        str(report_path),
+        "--log-path",
+        str(log_path),
+        "--experiment-name",
+        "preflight_cli_test",
+        "--preflight-only",
+    ]
+    rc = train_fed_cli.main(preflight_args)
+    assert rc == 0
+    preflight_stdout = _extract_trailing_json(capsys.readouterr().out)
+    assert preflight_stdout["status"] == "passed"
+    assert preflight_stdout["both_clients_registered"] is True
+    assert preflight_stdout["zero_test_leakage"] is True
+    assert preflight_stdout["files_verified"] is True
+    assert preflight_stdout["output_paths"]["writable"] is True
+    assert preflight_stdout["output_paths"]["pilot_isolated"] is True
+    assert preflight_stdout["held_out_test_samples_excluded"] == 4
+    # No checkpoints or training report should be written by --preflight-only
+    assert not (ckpt_dir / "best_checkpoint.pt").exists()
+    assert not report_path.exists()
+
+    # Reject pilot-named output paths when protect_pilot_outputs is active
+    pilot_args = list(preflight_args)
+    pilot_idx = pilot_args.index("--checkpoint-dir") + 1
+    pilot_args[pilot_idx] = str(tmp_path / "pilot_2rounds_ckpts")
+    with pytest.raises(FederatedPreflightError, match="pilot"):
+        train_fed_cli.main(pilot_args)
+
+
+def test_federated_evaluation_overall_metrics_isolation_and_visualization(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verify evaluate_federated computes overall metrics, verifies isolation, and renders visualizations."""
+    (
+        combined_manifest_path,
+        ddr_manifest_path,
+        idrid_manifest_path,
+        partition_manifest_path,
+    ) = _create_synthetic_manifests_on_disk(tmp_path)
+
+    # 1. Train 1 quick round to obtain a genuine checkpoint
+    ckpt_dir = tmp_path / "test_eval_ckpts"
+    report_path = tmp_path / "test_train_report.json"
+    train_args = [
+        "--config",
+        "configs/federated.yaml",
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--source-manifest",
+        str(combined_manifest_path),
+        "--rounds",
+        "1",
+        "--local-epochs",
+        "1",
+        "--batch-size",
+        "2",
+        "--val-batch-size",
+        "2",
+        "--image-size",
+        "32",
+        "--seed",
+        "42",
+        "--device",
+        "cpu",
+        "--no-pretrained",
+        "--checkpoint-dir",
+        str(ckpt_dir),
+        "--report-path",
+        str(report_path),
+        "--experiment-name",
+        "eval_features_test",
+    ]
+    rc_train = train_fed_cli.main(train_args)
+    assert rc_train == 0
+    _ = capsys.readouterr()
+
+    # 2. Run evaluate_federated with --visualize-dir and --log-path
+    vis_dir = tmp_path / "test_visualizations"
+    eval_report_path = tmp_path / "eval_report.json"
+    eval_log_path = tmp_path / "eval.log"
+
+    eval_args = [
+        "--checkpoint",
+        str(ckpt_dir / "best_checkpoint.pt"),
+        "--split",
+        "test",
+        "--datasets",
+        "ddr",
+        "idrid",
+        "--ddr-manifest",
+        str(ddr_manifest_path),
+        "--idrid-manifest",
+        str(idrid_manifest_path),
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--batch-size",
+        "2",
+        "--image-size",
+        "32",
+        "--device",
+        "cpu",
+        "--report-path",
+        str(eval_report_path),
+        "--log-path",
+        str(eval_log_path),
+        "--visualize-dir",
+        str(vis_dir),
+        "--num-visualizations",
+        "2",
+    ]
+    rc_eval = eval_fed_cli.main(eval_args)
+    assert rc_eval == 0
+    eval_stdout = _extract_trailing_json(capsys.readouterr().out)
+
+    assert eval_stdout["status"] == "completed"
+    assert eval_stdout["split"] == "test"
+    assert "overall" in eval_stdout
+    assert "sample_weighted" in eval_stdout["overall"]
+    assert "client_macro" in eval_stdout["overall"]
+    assert eval_stdout["visualizations_count"] > 0
+
+    assert eval_report_path.is_file()
+    eval_json = json.loads(eval_report_path.read_text(encoding="utf-8"))
+    assert eval_json["status"] == "completed"
+    assert "isolation_verification" in eval_json
+    assert eval_json["isolation_verification"]["checkpoint_verified_unmodified"] is True
+    assert eval_json["isolation_verification"]["test_data_leakage_detected"] is False
+    assert eval_json["isolation_verification"]["total_samples_evaluated"] == 4  # 2 DDR + 2 IDRiD in synthetic
+
+    assert eval_log_path.is_file()
+    assert eval_log_path.stat().st_size > 0
+
+    assert vis_dir.is_dir()
+    rendered_pngs = list(vis_dir.glob("*.png"))
+    assert len(rendered_pngs) > 0
+    assert len(eval_json["visualizations"]) == len(rendered_pngs)
+
+

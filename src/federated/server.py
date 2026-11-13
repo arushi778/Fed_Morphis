@@ -44,12 +44,17 @@ from flwr.server.client_proxy import ClientProxy
 import torch
 import torch.nn as nn
 
+from src.data.dataset import _extract_records_from_input
+from src.data.masks import CANONICAL_LESION_CHANNELS
+from src.engine.evaluator import verify_exact_split
+from src.engine.trainer import verify_no_test_split_leakage
 from src.federated.client import (
     FedMorphisNumPyClient,
     build_federated_client,
 )
 from src.federated.data import (
     ClientDataBundle,
+    FederatedDataError,
     build_all_federated_client_dataloaders,
 )
 from src.federated.strategy import (
@@ -67,6 +72,10 @@ from src.utils.paths import format_project_path, resolve_project_path
 from src.utils.seed import set_seed
 
 logger = get_logger("fedmorphis.federated.server")
+
+
+class FederatedPreflightError(FederatedStrategyError):
+    """Raised when a federated training preflight check fails."""
 
 
 class InProcessClientProxy(ClientProxy):
@@ -545,6 +554,661 @@ def _extract_client_sample_counts(
     }
 
 
+def _verify_directory_writable(directory: Path, label: str) -> None:
+    """Ensure ``directory`` can be created and written to on disk."""
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        probe_path = directory / f".fedmorphis_write_probe_{os.getpid()}_{uuid.uuid4().hex}.tmp"
+        with probe_path.open("w", encoding="utf-8") as fh:
+            fh.write("ok\n")
+        probe_path.unlink()
+    except Exception as exc:
+        raise FederatedPreflightError(
+            f"Preflight failed: {label} directory '{directory}' is not writable: {exc}"
+        ) from exc
+
+
+def _verify_output_paths_isolated(
+    *,
+    checkpoint_dir: Path | None,
+    report_path: Path | None,
+    log_path: Path | None,
+    protect_pilot_outputs: bool = True,
+) -> dict[str, Any]:
+    """Verify output paths are writable and will not overwrite pilot checkpoints or reports."""
+    paths_summary: dict[str, Any] = {
+        "checkpoint_dir": format_project_path(checkpoint_dir) if checkpoint_dir is not None else None,
+        "report_path": format_project_path(report_path) if report_path is not None else None,
+        "log_path": format_project_path(log_path) if log_path is not None else None,
+        "writable": True,
+        "pilot_isolated": True,
+    }
+
+    if checkpoint_dir is not None:
+        _verify_directory_writable(checkpoint_dir, "checkpoint")
+    if report_path is not None:
+        _verify_directory_writable(report_path.parent, "report")
+    if log_path is not None:
+        _verify_directory_writable(log_path.parent, "log")
+
+    if not protect_pilot_outputs:
+        return paths_summary
+
+    for label, path_obj in (
+        ("checkpoint_dir", checkpoint_dir),
+        ("report_path", report_path),
+        ("log_path", log_path),
+    ):
+        if path_obj is None:
+            continue
+        norm_str = path_obj.as_posix().lower()
+        if "pilot" in norm_str:
+            raise FederatedPreflightError(
+                f"Preflight failed: {label} '{format_project_path(path_obj)}' targets a pilot "
+                "path while protect_pilot_outputs=True. Use a dedicated non-pilot path."
+            )
+
+    if checkpoint_dir is not None:
+        default_root = resolve_project_path("checkpoints/federated").resolve()
+        if checkpoint_dir.resolve() == default_root:
+            existing_ckpts = [
+                p.name
+                for p in (
+                    default_root / "best_checkpoint.pt",
+                    default_root / "latest_checkpoint.pt",
+                )
+                if p.exists()
+            ]
+            if existing_ckpts:
+                raise FederatedPreflightError(
+                    f"Preflight failed: checkpoint_dir '{format_project_path(checkpoint_dir)}' "
+                    f"already contains checkpoint file(s) {existing_ckpts}. Use a dedicated "
+                    "subdirectory so existing/pilot checkpoints are not overwritten."
+                )
+
+    if report_path is not None and report_path.exists():
+        default_rep = resolve_project_path(
+            "logs/federated_fedavg_ddr_idrid_report.json"
+        ).resolve()
+        if report_path.resolve() == default_rep:
+            raise FederatedPreflightError(
+                f"Preflight failed: report_path '{format_project_path(report_path)}' already "
+                "exists at the default report location. Use a dedicated report path to avoid "
+                "overwriting pilot or prior experiment reports."
+            )
+
+    return paths_summary
+
+
+def run_federated_preflight(
+    federated_config: Mapping[str, Any] | str | Path = "federated.yaml",
+    dataset_config: Mapping[str, Any] | str | Path = "dataset.yaml",
+    model_config: Mapping[str, Any] | str | Path = "model.yaml",
+    project_config: Mapping[str, Any] | str | Path = "project.yaml",
+    *,
+    experiment_config: Mapping[str, Any] | str | Path | None = None,
+    experiment_name: str | None = None,
+    num_rounds: int | None = None,
+    partition_manifest: str | Path | Mapping[str, Any] | None = None,
+    source_manifest: str | Path | Mapping[str, Any] | Sequence[Mapping[str, Any]] | None = None,
+    checkpoint_dir: str | Path | None = None,
+    report_path: str | Path | None = None,
+    log_path: str | Path | None = None,
+    log_level: str = "INFO",
+    include_buffers: bool | None = None,
+    integer_buffer_policy: str = "max",
+    local_epochs: int | None = None,
+    batch_size: int | None = None,
+    val_batch_size: int | None = None,
+    num_workers: int | None = None,
+    learning_rate: float | None = None,
+    mixed_precision: bool | None = None,
+    seed: int | None = None,
+    device: torch.device | str | None = None,
+    image_size: tuple[int, int] | None = None,
+    fov_crop: bool | None = None,
+    verify_files_exist: bool = True,
+    protect_pilot_outputs: bool = True,
+    require_cuda: bool = False,
+    expected_client_counts: Mapping[str, Mapping[str, int]] | None = None,
+) -> dict[str, Any]:
+    """Execute preflight validation for Flower federated segmentation training.
+
+    Verifies before training begins:
+    1. DDR and IDRiD training and validation datasets can be loaded and all underlying
+       image and lesion mask files exist on disk (when ``verify_files_exist=True``).
+    2. Both clients (`client_0` = DDR, `client_1` = IDRiD) are constructed, registered,
+       and eligible to participate in every round.
+    3. The global :class:`ResNet50UNet` model initializes cleanly with finite parameters
+       and the configured pretrained weights (`imagenet`, `ssl_checkpoint`, or `random`).
+    4. CUDA availability and mixed-precision (`AMP`) settings are valid and operational.
+    5. Target checkpoint, report, and log directories are writable and isolated from
+       Task 7B pilot checkpoints/reports.
+    6. Zero held-out test split samples enter any client training or validation dataset.
+
+    Raises:
+        FederatedPreflightError: If any required preflight condition is not met.
+    """
+    try:
+        fed_cfg = (
+            load_yaml_config(federated_config, validate=True)
+            if isinstance(federated_config, (str, Path))
+            else dict(federated_config)
+        )
+        ds_cfg = (
+            load_yaml_config(dataset_config, validate=True)
+            if isinstance(dataset_config, (str, Path))
+            else dict(dataset_config)
+        )
+        mdl_cfg = (
+            load_yaml_config(model_config, validate=True)
+            if isinstance(model_config, (str, Path))
+            else dict(model_config)
+        )
+        proj_cfg = (
+            load_yaml_config(project_config, validate=True)
+            if isinstance(project_config, (str, Path))
+            else dict(project_config)
+        )
+        if experiment_config is not None:
+            exp_cfg: dict[str, Any] = (
+                load_yaml_config(experiment_config, validate=True)
+                if isinstance(experiment_config, (str, Path))
+                else dict(experiment_config)
+            )
+        else:
+            try:
+                exp_cfg = load_yaml_config("experiment.yaml", validate=False)
+            except Exception:
+                exp_cfg = {}
+    except Exception as exc:
+        raise FederatedPreflightError(
+            f"Preflight failed during configuration validation: {exc}"
+        ) from exc
+
+    resolved_experiment_name = str(
+        experiment_name
+        if experiment_name is not None
+        else fed_cfg.get(
+            "experiment_name",
+            exp_cfg.get("experiment_name", "fedmorphis_federated_fedavg"),
+        )
+    ).strip() or "fedmorphis_federated_fedavg"
+
+    resolved_rounds = int(
+        num_rounds
+        if num_rounds is not None
+        else fed_cfg.get("rounds", fed_cfg.get("communication_rounds", 20))
+    )
+    if resolved_rounds < 1:
+        raise FederatedPreflightError(
+            f"Preflight failed: num_rounds must be >= 1, got {resolved_rounds}."
+        )
+
+    resolved_seed = int(
+        seed
+        if seed is not None
+        else fed_cfg.get(
+            "seed",
+            fed_cfg.get("partitioning", {}).get("seed", proj_cfg.get("random_seed", 42)),
+        )
+    )
+    deterministic = bool(proj_cfg.get("deterministic", True))
+    set_seed(resolved_seed, deterministic=deterministic)
+
+    # 1. Resolve and validate target device & mixed precision
+    requested_device_str = (
+        str(device)
+        if device is not None
+        else str(proj_cfg.get("device", "auto"))
+    ).strip().lower()
+
+    try:
+        if device is None:
+            resolved_device = resolve_device(str(proj_cfg.get("device", "auto")))
+        elif isinstance(device, str):
+            resolved_device = resolve_device(device)
+        else:
+            resolved_device = torch.device(device)
+    except Exception as exc:
+        raise FederatedPreflightError(
+            f"Preflight failed: invalid device configuration ({requested_device_str!r}): {exc}"
+        ) from exc
+
+    cuda_available = bool(torch.cuda.is_available())
+    if (require_cuda or requested_device_str == "cuda") and (
+        resolved_device.type != "cuda" or not cuda_available
+    ):
+        raise FederatedPreflightError(
+            f"Preflight failed: CUDA execution is required (requested={requested_device_str!r}, "
+            f"require_cuda={require_cuda}), but resolved_device={resolved_device} and "
+            f"torch.cuda.is_available()={cuda_available}."
+        )
+
+    resolved_amp = bool(
+        mixed_precision
+        if mixed_precision is not None
+        else mdl_cfg.get("training", {}).get("mixed_precision", False)
+    )
+    if not isinstance(resolved_amp, bool):
+        raise FederatedPreflightError(
+            f"Preflight failed: mixed_precision must be a boolean, got {resolved_amp!r}."
+        )
+
+    gpu_name: str | None = None
+    gpu_vram_gb: float | None = None
+    amp_verified = False
+    if resolved_device.type == "cuda":
+        if not cuda_available:
+            raise FederatedPreflightError(
+                "Preflight failed: resolved device is 'cuda', but torch.cuda.is_available() is False."
+            )
+        try:
+            dev_idx = (
+                resolved_device.index
+                if resolved_device.index is not None
+                else torch.cuda.current_device()
+            )
+            props = torch.cuda.get_device_properties(dev_idx)
+            gpu_name = str(props.name)
+            gpu_vram_gb = round(float(props.total_memory / (1024**3)), 2)
+            # Execute a lightweight CUDA + AMP probe
+            probe_x = torch.ones((2, 4), device=resolved_device, dtype=torch.float32, requires_grad=True)
+            probe_w = torch.ones((4, 2), device=resolved_device, dtype=torch.float32, requires_grad=True)
+            scaler = torch.amp.GradScaler("cuda", enabled=resolved_amp)
+            with torch.amp.autocast("cuda", enabled=resolved_amp):
+                probe_out = (probe_x @ probe_w).sum()
+            scaler.scale(probe_out).backward()
+            if not bool(torch.isfinite(probe_out).item()):
+                raise FederatedPreflightError("CUDA/AMP probe produced non-finite output.")
+            amp_verified = True
+        except FederatedPreflightError:
+            raise
+        except Exception as exc:
+            raise FederatedPreflightError(
+                f"Preflight failed during CUDA / mixed-precision verification on {resolved_device}: {exc}"
+            ) from exc
+    else:
+        amp_verified = not resolved_amp
+
+    # 2. Resolve and verify output directories and pilot isolation
+    ckpt_cfg = dict(fed_cfg.get("checkpointing", {}))
+    raw_ckpt_dir = (
+        checkpoint_dir
+        if checkpoint_dir is not None
+        else ckpt_cfg.get(
+            "save_dir",
+            fed_cfg.get("checkpoint_directory", "checkpoints/federated"),
+        )
+    )
+    resolved_ckpt_dir = (
+        resolve_project_path(raw_ckpt_dir) if raw_ckpt_dir is not None else None
+    )
+
+    raw_rep = (
+        report_path
+        if report_path is not None
+        else fed_cfg.get("logging", {}).get(
+            "report_path", fed_cfg.get("report_path")
+        )
+    )
+    resolved_report_path = (
+        resolve_project_path(raw_rep) if raw_rep is not None else None
+    )
+
+    raw_log = (
+        log_path
+        if log_path is not None
+        else fed_cfg.get("logging", {}).get(
+            "log_path", fed_cfg.get("log_path")
+        )
+    )
+    resolved_log_path = (
+        resolve_project_path(raw_log) if raw_log is not None else None
+    )
+    if resolved_log_path is not None:
+        configure_federated_logging(
+            level=str(log_level or "INFO").upper(),
+            log_path=resolved_log_path,
+            console=True,
+        )
+
+    output_paths_check = _verify_output_paths_isolated(
+        checkpoint_dir=resolved_ckpt_dir,
+        report_path=resolved_report_path,
+        log_path=resolved_log_path,
+        protect_pilot_outputs=protect_pilot_outputs,
+    )
+
+    # 3. Load and verify client datasets, file existence, and zero test leakage
+    using_default_partition = partition_manifest is None and (
+        fed_cfg.get("partitioning", {}).get("manifest_path")
+        in {None, "data/partitions/combined_cross_dataset_2clients_seed42.json"}
+    )
+    try:
+        bundles_map = build_all_federated_client_dataloaders(
+            partition_manifest=partition_manifest,
+            source_manifest=source_manifest,
+            federated_config=fed_cfg,
+            dataset_config=ds_cfg,
+            batch_size=batch_size,
+            val_batch_size=val_batch_size,
+            num_workers=num_workers,
+            seed=resolved_seed,
+            image_size=image_size,
+            fov_crop=fov_crop,
+            cache_in_memory=False,
+            verify_files_exist=verify_files_exist,
+        )
+    except Exception as exc:
+        raise FederatedPreflightError(
+            f"Preflight failed while loading federated client datasets: {exc}"
+        ) from exc
+
+    expected_num_clients = int(fed_cfg.get("number_of_clients", 2))
+    if len(bundles_map) != expected_num_clients:
+        raise FederatedPreflightError(
+            f"Preflight failed: expected {expected_num_clients} federated clients, "
+            f"but partition manifest produced {len(bundles_map)} ({list(bundles_map.keys())})."
+        )
+
+    # Collect held-out test records to double-check zero test-split overlap across all clients
+    held_out_test_keys: set[tuple[str, str]] = set()
+    if source_manifest is not None:
+        src_recs = _extract_records_from_input(source_manifest)
+        for r in src_recs:
+            if str(r.get("split", "")).strip().lower() == "test":
+                held_out_test_keys.add((str(r.get("dataset_name")), str(r.get("sample_id"))))
+    elif using_default_partition:
+        manifest_dir = resolve_project_path(
+            ds_cfg.get("paths", {}).get("manifests", "data/processed/manifests")
+        )
+        default_combined = manifest_dir / "combined_manifest.json"
+        if default_combined.is_file():
+            src_recs = _extract_records_from_input(default_combined)
+            for r in src_recs:
+                if str(r.get("split", "")).strip().lower() == "test":
+                    held_out_test_keys.add(
+                        (str(r.get("dataset_name")), str(r.get("sample_id")))
+                    )
+
+    active_train_keys: set[tuple[str, str]] = set()
+    active_val_keys: set[tuple[str, str]] = set()
+    by_dataset_counts: dict[str, dict[str, int]] = {}
+
+    for cid, bundle in sorted(bundles_map.items()):
+        if bundle.num_train_samples <= 0:
+            raise FederatedPreflightError(
+                f"Preflight failed: client '{cid}' has 0 training samples."
+            )
+        if bundle.num_val_samples <= 0:
+            raise FederatedPreflightError(
+                f"Preflight failed: client '{cid}' has 0 validation samples."
+            )
+        try:
+            verify_no_test_split_leakage(bundle.train_loader, stage_name=f"{cid}:train")
+            verify_no_test_split_leakage(bundle.val_loader, stage_name=f"{cid}:validation")
+            verify_exact_split(bundle.val_loader, expected_split="valid")
+        except Exception as exc:
+            raise FederatedPreflightError(
+                f"Preflight failed split-hygiene check for client '{cid}': {exc}"
+            ) from exc
+
+        for rec in bundle.train_records:
+            sp = str(rec.get("split", "")).strip().lower()
+            if sp != "train":
+                raise FederatedPreflightError(
+                    f"Preflight failed: non-train record {rec.get('sample_id')!r} (split={sp!r}) "
+                    f"in {cid} training set."
+                )
+            key = (str(rec["dataset_name"]), str(rec["sample_id"]))
+            active_train_keys.add(key)
+            ds_entry = by_dataset_counts.setdefault(
+                str(rec["dataset_name"]), {"train": 0, "val": 0}
+            )
+            ds_entry["train"] += 1
+
+        for rec in bundle.val_records:
+            sp = str(rec.get("split", "")).strip().lower()
+            if sp not in {"valid", "val"}:
+                raise FederatedPreflightError(
+                    f"Preflight failed: non-validation record {rec.get('sample_id')!r} (split={sp!r}) "
+                    f"in {cid} validation set."
+                )
+            key = (str(rec["dataset_name"]), str(rec["sample_id"]))
+            active_val_keys.add(key)
+            ds_entry = by_dataset_counts.setdefault(
+                str(rec["dataset_name"]), {"train": 0, "val": 0}
+            )
+            ds_entry["val"] += 1
+
+    leaked_test = sorted((active_train_keys | active_val_keys) & held_out_test_keys)
+    if leaked_test:
+        raise FederatedPreflightError(
+            f"Preflight failed: {len(leaked_test)} held-out test sample(s) leaked into "
+            f"training/validation: {leaked_test[:5]}"
+        )
+
+    resolved_expected_counts: Mapping[str, Mapping[str, int]] | None = expected_client_counts
+    if (
+        resolved_expected_counts is None
+        and using_default_partition
+        and source_manifest is None
+        and str(fed_cfg.get("val_split_mode", "official_and_carved")).strip().lower()
+        == "official_and_carved"
+        and abs(float(fed_cfg.get("val_carve_ratio", 0.2)) - 0.2) < 1e-6
+    ):
+        resolved_expected_counts = {
+            "DDR": {"train": 383, "val": 149},
+            "IDRiD": {"train": 44, "val": 10},
+        }
+
+    if resolved_expected_counts is not None:
+        for ds_name, exp_map in resolved_expected_counts.items():
+            actual_map = by_dataset_counts.get(ds_name)
+            if actual_map is None:
+                raise FederatedPreflightError(
+                    f"Preflight failed: expected dataset '{ds_name}' in client bundles, "
+                    f"found datasets {sorted(by_dataset_counts.keys())}."
+                )
+            exp_tr = int(exp_map["train"])
+            exp_val = int(exp_map["val"])
+            if actual_map["train"] != exp_tr or actual_map["val"] != exp_val:
+                raise FederatedPreflightError(
+                    f"Preflight failed: dataset '{ds_name}' sample counts mismatch: "
+                    f"expected train={exp_tr}, val={exp_val}, got train={actual_map['train']}, "
+                    f"val={actual_map['val']}."
+                )
+
+    # 4. Construct global model, strategy, and Flower server and verify client participation
+    try:
+        server, fed_strategy, model, proxies = build_federated_server(
+            federated_config=fed_cfg,
+            dataset_config=ds_cfg,
+            model_config=mdl_cfg,
+            project_config=proj_cfg,
+            data_bundles=bundles_map,
+            checkpoint_dir=resolved_ckpt_dir,
+            save_checkpoints=True,
+            accept_failures=False,
+            include_buffers=include_buffers,
+            integer_buffer_policy=integer_buffer_policy,
+            local_epochs=local_epochs,
+            batch_size=batch_size,
+            val_batch_size=val_batch_size,
+            num_workers=num_workers,
+            learning_rate=learning_rate,
+            mixed_precision=resolved_amp,
+            seed=resolved_seed,
+            device=resolved_device,
+            image_size=image_size,
+            fov_crop=fov_crop,
+            cache_in_memory=False,
+            verify_files_exist=False,
+            num_rounds=resolved_rounds,
+            max_workers=1,
+        )
+    except Exception as exc:
+        raise FederatedPreflightError(
+            f"Preflight failed during global model / Flower server initialization: {exc}"
+        ) from exc
+
+    num_registered = server._client_manager.num_available()
+    if len(proxies) != expected_num_clients or num_registered != expected_num_clients:
+        raise FederatedPreflightError(
+            f"Preflight failed: expected {expected_num_clients} registered clients, "
+            f"got proxies={len(proxies)}, available={num_registered}."
+        )
+    if (
+        fed_strategy.min_fit_clients != expected_num_clients
+        or fed_strategy.min_evaluate_clients != expected_num_clients
+        or fed_strategy.min_available_clients != expected_num_clients
+    ):
+        raise FederatedPreflightError(
+            f"Preflight failed: full client participation required ({expected_num_clients} clients), "
+            f"but min_fit_clients={fed_strategy.min_fit_clients}, "
+            f"min_evaluate_clients={fed_strategy.min_evaluate_clients}, "
+            f"min_available_clients={fed_strategy.min_available_clients}."
+        )
+
+    # 5. Verify global model architecture, pretrained weights, and parameter finiteness
+    out_ch = getattr(model, "output_channels", getattr(model, "num_classes", None))
+    if out_ch is not None and int(out_ch) != len(CANONICAL_LESION_CHANNELS):
+        raise FederatedPreflightError(
+            f"Preflight failed: global model output_channels={out_ch}, "
+            f"expected {len(CANONICAL_LESION_CHANNELS)} ({list(CANONICAL_LESION_CHANNELS)})."
+        )
+
+    for key, tensor in model.state_dict().items():
+        if tensor.is_floating_point() and not bool(torch.isfinite(tensor).all().item()):
+            raise FederatedPreflightError(
+                f"Preflight failed: global model contains non-finite values in '{key}'."
+            )
+
+    init_meta = dict(fed_strategy.initialization_metadata)
+    init_mode = str(
+        init_meta.get(
+            "initialization_mode",
+            init_meta.get("encoder_weights_source", "unknown"),
+        )
+    )
+    pretrained_req = bool(
+        fed_cfg.get("initialization", {}).get("pretrained", mdl_cfg.get("pretrained", True))
+    )
+    pretrained_loaded = bool(
+        init_meta.get(
+            "pretrained_weights_loaded",
+            getattr(model, "pretrained_weights_loaded", False),
+        )
+    )
+    if pretrained_req and init_mode != "random" and not pretrained_loaded:
+        raise FederatedPreflightError(
+            f"Preflight failed: pretrained global encoder weights were requested "
+            f"(source={init_mode!r}), but pretrained_weights_loaded is False."
+        )
+
+    client_sample_counts = _extract_client_sample_counts(proxies)
+
+    preflight_report: dict[str, Any] = {
+        "status": "passed",
+        "experiment_name": resolved_experiment_name,
+        "framework": "flower",
+        "flower_version": str(getattr(flwr, "__version__", "unknown")),
+        "strategy": str(fed_cfg.get("strategy", "FedAvg")),
+        "num_rounds": int(resolved_rounds),
+        "local_epochs": int(fed_strategy.local_epochs),
+        "batch_size": int(
+            batch_size
+            if batch_size is not None
+            else fed_cfg.get("local_batch_size", ds_cfg.get("batch_size", 8))
+        ),
+        "image_size": list(
+            image_size
+            if image_size is not None
+            else (
+                int(ds_cfg.get("image_size", {}).get("height", 512)),
+                int(ds_cfg.get("image_size", {}).get("width", 512)),
+            )
+        ),
+        "seed": int(resolved_seed),
+        "device": str(resolved_device),
+        "cuda_available": cuda_available,
+        "gpu_name": gpu_name,
+        "gpu_vram_gb": gpu_vram_gb,
+        "mixed_precision": resolved_amp,
+        "amp_verified": amp_verified,
+        "number_of_clients": int(len(proxies)),
+        "both_clients_registered": bool(len(proxies) == expected_num_clients),
+        "client_sample_counts": client_sample_counts,
+        "dataset_sample_counts": by_dataset_counts,
+        "held_out_test_samples_excluded": int(len(held_out_test_keys)),
+        "zero_test_leakage": True,
+        "files_verified": bool(verify_files_exist),
+        "global_model": {
+            "architecture": type(model).__name__,
+            "output_channels": int(out_ch) if out_ch is not None else 4,
+            "channel_order": list(CANONICAL_LESION_CHANNELS),
+            "initialization_mode": init_mode,
+            "pretrained_weights_loaded": pretrained_loaded,
+            "weights_status": str(
+                init_meta.get("weights_status", getattr(model, "weights_status", "unknown"))
+            ),
+        },
+        "output_paths": output_paths_check,
+    }
+
+    logger.info("==================== FEDERATED PREFLIGHT PASSED ====================")
+    logger.info(
+        "[PREFLIGHT] Framework: Flower %s | Strategy: %s | Rounds: %d | Local Epochs: %d | Seed: %d",
+        preflight_report["flower_version"],
+        preflight_report["strategy"],
+        preflight_report["num_rounds"],
+        preflight_report["local_epochs"],
+        preflight_report["seed"],
+    )
+    logger.info(
+        "[PREFLIGHT] Device: %s | CUDA Available: %s | GPU: %s | Mixed Precision: %s (verified=%s)",
+        preflight_report["device"],
+        preflight_report["cuda_available"],
+        f"{gpu_name} ({gpu_vram_gb} GB)" if gpu_name else "CPU",
+        preflight_report["mixed_precision"],
+        preflight_report["amp_verified"],
+    )
+    logger.info(
+        "[PREFLIGHT] Global Model: %s | Init Source: %s | Pretrained Loaded: %s | Channels: %s",
+        preflight_report["global_model"]["architecture"],
+        preflight_report["global_model"]["initialization_mode"],
+        preflight_report["global_model"]["pretrained_weights_loaded"],
+        preflight_report["global_model"]["channel_order"],
+    )
+    logger.info(
+        "[PREFLIGHT] Clients Registered: %d | Total Train: %d | Total Val: %d | Held-Out Test Excluded: %d | Files Verified: %s",
+        preflight_report["number_of_clients"],
+        client_sample_counts.get("total_train_samples", 0),
+        client_sample_counts.get("total_val_samples", 0),
+        preflight_report["held_out_test_samples_excluded"],
+        preflight_report["files_verified"],
+    )
+    for ds_name, counts in sorted(by_dataset_counts.items()):
+        logger.info(
+            "[PREFLIGHT]   Dataset %s: train=%d samples, val=%d samples",
+            ds_name,
+            counts["train"],
+            counts["val"],
+        )
+    logger.info(
+        "[PREFLIGHT] Output Paths: checkpoints=%s | report=%s | log=%s (writable=%s, pilot_isolated=%s)",
+        output_paths_check["checkpoint_dir"],
+        output_paths_check["report_path"],
+        output_paths_check["log_path"],
+        output_paths_check["writable"],
+        output_paths_check["pilot_isolated"],
+    )
+    logger.info("====================================================================")
+
+    return preflight_report
+
+
 def run_federated_training(
     federated_config: Mapping[str, Any] | str | Path = "federated.yaml",
     dataset_config: Mapping[str, Any] | str | Path = "dataset.yaml",
@@ -963,12 +1627,14 @@ run_federated_rounds = run_federated_training
 
 
 __all__ = [
+    "FederatedPreflightError",
     "FederatedServerRunResult",
     "InProcessClientProxy",
     "build_federated_server",
     "initialize_global_model",
     "load_global_checkpoint",
     "register_clients_with_manager",
+    "run_federated_preflight",
     "run_federated_rounds",
     "run_federated_training",
     "save_global_checkpoint",

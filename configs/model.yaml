@@ -23,12 +23,15 @@ decoder:
 encoder_weights_source: "imagenet"
 ssl_checkpoint_path: "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
 
-# Multilabel BCE + Soft Dice segmentation loss configuration
+# Multilabel BCE + Tversky segmentation loss configuration (Experiment 2: alpha=0.3, beta=0.7)
 loss:
-  type: "bce_dice"
+  type: "bce_tversky"
   bce_weight: 0.5
-  dice_weight: 0.5
+  tversky_weight: 0.5
+  alpha: 0.3
+  beta: 0.7
   smooth: 1.0e-5
+  pos_weight: null
 
 # Supervised baseline training & validation hyperparameters
 training:

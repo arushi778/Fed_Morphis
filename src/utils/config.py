@@ -380,6 +380,7 @@ def validate_model_config(config: Mapping[str, Any]) -> None:
 
     if "loss" in cfg:
         loss_cfg = _require_mapping(cfg["loss"], f"{ctx}:loss")
+        loss_type = str(loss_cfg.get("type", "bce_dice")).strip().lower()
         bce_w = float(
             _require_number(
                 loss_cfg.get("bce_weight", 0.5),
@@ -388,22 +389,41 @@ def validate_model_config(config: Mapping[str, Any]) -> None:
                 min_value=0.0,
             )
         )
-        dice_w = float(
+        second_w = float(
             _require_number(
-                loss_cfg.get("dice_weight", 0.5),
-                "loss.dice_weight",
+                loss_cfg.get("tversky_weight", loss_cfg.get("dice_weight", 0.5)),
+                "loss.dice_weight or loss.tversky_weight",
                 ctx,
                 min_value=0.0,
             )
         )
-        if (bce_w + dice_w) <= 0.0:
+        if (bce_w + second_w) <= 0.0:
             raise ConfigValidationError(
-                f"[{ctx}] 'loss.bce_weight' + 'loss.dice_weight' must be > 0."
+                f"[{ctx}] 'loss.bce_weight' + 'loss.dice_weight' (or tversky_weight) must be > 0."
             )
         if "smooth" in loss_cfg:
             _require_number(
                 loss_cfg["smooth"], "loss.smooth", ctx, min_value=0.0, strict_min=True
             )
+        if "alpha" in loss_cfg:
+            _require_number(
+                loss_cfg["alpha"], "loss.alpha", ctx, min_value=0.0, max_value=1.0
+            )
+        if "beta" in loss_cfg:
+            _require_number(
+                loss_cfg["beta"], "loss.beta", ctx, min_value=0.0, max_value=1.0
+            )
+        if "pos_weight" in loss_cfg and loss_cfg["pos_weight"] is not None:
+            pw = loss_cfg["pos_weight"]
+            if not isinstance(pw, (list, tuple)) or len(pw) != 4:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'loss.pos_weight' must be a sequence of 4 positive numbers corresponding to [MA, HE, EX, SE], got {pw!r}."
+                )
+            for w in pw:
+                if isinstance(w, bool) or not isinstance(w, (int, float)) or float(w) <= 0.0:
+                    raise ConfigValidationError(
+                        f"[{ctx}] 'loss.pos_weight' elements must be positive numbers > 0, got {w!r}."
+                    )
 
     if "training" in cfg:
         tr_cfg = _require_mapping(cfg["training"], f"{ctx}:training")

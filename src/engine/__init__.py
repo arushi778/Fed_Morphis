@@ -7,6 +7,11 @@ from src.engine.evaluator import (
     reconstruct_model_from_checkpoint,
     verify_exact_split,
 )
+from src.engine.inference import (
+    ChannelPrediction,
+    InferenceResult,
+    LesionSegmentationPipeline,
+)
 from src.engine.simclr_trainer import (
     SimCLRTrainer,
     build_ssl_optimizer_from_config,
@@ -21,6 +26,9 @@ from src.engine.trainer import (
 )
 
 __all__ = [
+    "ChannelPrediction",
+    "InferenceResult",
+    "LesionSegmentationPipeline",
     "SimCLRTrainer",
     "SplitMismatchError",
     "SupervisedSegmentationTrainer",

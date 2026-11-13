@@ -122,6 +122,100 @@ class SoftDiceLoss(nn.Module):
         return channel_loss.mean()
 
 
+class TverskyLoss(nn.Module):
+    """Per-channel Tversky Loss for multilabel binary segmentation.
+
+    Computes ``1 - TverskyIndex`` independently per lesion channel after applying
+    ``torch.sigmoid`` to raw logits.
+
+    Tversky Index formulation:
+        ``TI = (TP + smooth) / (TP + alpha * FP + beta * FN + smooth)``
+
+    When ``beta > alpha`` (e.g., ``alpha=0.3, beta=0.7``), false negatives (missed lesions)
+    are penalized more heavily than false positives, boosting recall on small,
+    sparse lesion classes like microaneurysms (MA).
+
+    Args:
+        alpha: Weight constant for false positives (must be in [0, 1]). Default 0.3.
+        beta: Weight constant for false negatives (must be in [0, 1]). Default 0.7.
+        smooth: Positive Laplace smoothing constant. Default 1e-5.
+        batch_tversky: If True, aggregates TP, FP, FN across (B, H, W) per channel
+            before computing Tversky index. If False, computes per sample and averages.
+        channel_names: Ordered tuple of channel names.
+    """
+
+    def __init__(
+        self,
+        alpha: float = 0.3,
+        beta: float = 0.7,
+        smooth: float = 1e-5,
+        batch_tversky: bool = True,
+        channel_names: tuple[str, ...] = CANONICAL_LESION_ORDER,
+    ) -> None:
+        super().__init__()
+        if not (0.0 <= float(alpha) <= 1.0):
+            raise ValueError(f"alpha must be in [0, 1], got {alpha}")
+        if not (0.0 <= float(beta) <= 1.0):
+            raise ValueError(f"beta must be in [0, 1], got {beta}")
+        if (float(alpha) + float(beta)) <= 0.0:
+            raise ValueError("alpha + beta must be > 0.")
+        if smooth <= 0.0:
+            raise ValueError(f"smooth must be > 0, got {smooth}")
+
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        self.smooth = float(smooth)
+        self.batch_tversky = bool(batch_tversky)
+        self.channel_names = tuple(channel_names)
+
+    def forward_per_channel(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return per-channel Tversky loss tensor of shape ``(C,)``."""
+        _validate_segmentation_tensors(logits, targets)
+        probs = torch.sigmoid(logits.float())
+        targets_float = targets.float().clamp(0.0, 1.0)
+
+        intersection = probs * targets_float
+        fp = probs * (1.0 - targets_float)
+        fn = (1.0 - probs) * targets_float
+
+        if self.batch_tversky:
+            dims = (0, 2, 3)
+            target_sum = torch.sum(targets_float, dim=dims)
+            tp_sum = torch.sum(intersection, dim=dims)
+            fp_sum = torch.sum(fp, dim=dims)
+            fn_sum = torch.sum(fn, dim=dims)
+
+            denominator = tp_sum + self.alpha * fp_sum + self.beta * fn_sum + self.smooth
+            tversky_present = 1.0 - (tp_sum + self.smooth) / denominator
+            empty_loss = torch.mean(probs * probs, dim=dims)
+            return torch.where(target_sum > 0.0, tversky_present, empty_loss)
+
+        dims = (2, 3)
+        target_sum = torch.sum(targets_float, dim=dims)
+        tp_sum = torch.sum(intersection, dim=dims)
+        fp_sum = torch.sum(fp, dim=dims)
+        fn_sum = torch.sum(fn, dim=dims)
+
+        denominator = tp_sum + self.alpha * fp_sum + self.beta * fn_sum + self.smooth
+        tversky_present = 1.0 - (tp_sum + self.smooth) / denominator
+        empty_loss = torch.mean(probs * probs, dim=dims)
+        sample_channel_loss = torch.where(target_sum > 0.0, tversky_present, empty_loss)
+        return sample_channel_loss.mean(dim=0)
+
+    def forward(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+    ) -> torch.Tensor:
+        """Compute scalar mean Tversky loss across all channels."""
+        channel_loss = self.forward_per_channel(logits, targets)
+        return channel_loss.mean()
+
+
 class BCEDiceLoss(nn.Module):
     """Combined Binary Cross-Entropy with Logits + Soft Dice Loss.
 
@@ -257,21 +351,94 @@ class BCEDiceLoss(nn.Module):
         return self.forward_tensors(logits, targets)[0]
 
 
+class BCETverskyLoss(BCEDiceLoss):
+    """Combined Binary Cross-Entropy with Logits + Asymmetric Tversky Loss.
+
+    Designed for multilabel retinal lesion segmentation to improve recall on small,
+    sparse lesions like microaneurysms (MA) and subtle hemorrhages (HE).
+
+    Total loss:
+        ``total_loss = bce_weight * bce_loss + tversky_weight * tversky_loss``
+
+    Inherits from :class:`BCEDiceLoss` to preserve full compatibility with
+    :class:`SupervisedSegmentationTrainer` and evaluation harnesses.
+
+    Args:
+        bce_weight: Non-negative weight for BCEWithLogitsLoss.
+        tversky_weight: Non-negative weight for TverskyLoss.
+        alpha: False positive weight in Tversky index (default 0.3).
+        beta: False negative weight in Tversky index (default 0.7).
+        smooth: Positive smoothing constant for TverskyLoss.
+        pos_weight: Optional per-channel positive class weights for BCE.
+        batch_tversky: Whether Tversky aggregates over the batch axis.
+        channel_names: Ordered tuple of channel names.
+    """
+
+    def __init__(
+        self,
+        bce_weight: float = 0.5,
+        tversky_weight: float = 0.5,
+        alpha: float = 0.3,
+        beta: float = 0.7,
+        smooth: float = 1e-5,
+        pos_weight: list[float] | tuple[float, ...] | torch.Tensor | None = None,
+        batch_tversky: bool = True,
+        channel_names: tuple[str, ...] = CANONICAL_LESION_ORDER,
+    ) -> None:
+        super().__init__(
+            bce_weight=bce_weight,
+            dice_weight=tversky_weight,
+            smooth=smooth,
+            pos_weight=pos_weight,
+            batch_dice=batch_tversky,
+            channel_names=channel_names,
+        )
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        self.tversky_weight = float(tversky_weight)
+        self.tversky_loss_fn = TverskyLoss(
+            alpha=self.alpha,
+            beta=self.beta,
+            smooth=self.smooth,
+            batch_tversky=batch_tversky,
+            channel_names=self.channel_names,
+        )
+        # Point dice_loss_fn to tversky_loss_fn so inherited methods evaluate Tversky loss
+        self.dice_loss_fn = self.tversky_loss_fn
+
+
 def build_loss_from_config(config: dict[str, Any]) -> BCEDiceLoss:
-    """Construct a :class:`BCEDiceLoss` from the ``model.yaml`` configuration dict."""
+    """Construct a segmentation loss (:class:`BCEDiceLoss` or :class:`BCETverskyLoss`) from config."""
     loss_cfg = config.get("loss", {})
     if not isinstance(loss_cfg, dict):
         loss_cfg = {}
 
+    loss_type = str(loss_cfg.get("type", "bce_dice")).strip().lower()
     bce_weight = float(loss_cfg.get("bce_weight", 0.5))
-    dice_weight = float(loss_cfg.get("dice_weight", 0.5))
     smooth = float(loss_cfg.get("smooth", 1e-5))
-    batch_dice = bool(loss_cfg.get("batch_dice", True))
     pos_weight = loss_cfg.get("pos_weight", None)
 
     channel_order = config.get("output_channel_order", list(CANONICAL_LESION_ORDER))
     channel_names = tuple(str(ch) for ch in channel_order)
 
+    if loss_type in {"bce_tversky", "tversky"}:
+        tversky_weight = float(loss_cfg.get("tversky_weight", loss_cfg.get("dice_weight", 0.5)))
+        alpha = float(loss_cfg.get("alpha", 0.3))
+        beta = float(loss_cfg.get("beta", 0.7))
+        batch_tversky = bool(loss_cfg.get("batch_tversky", loss_cfg.get("batch_dice", True)))
+        return BCETverskyLoss(
+            bce_weight=bce_weight,
+            tversky_weight=tversky_weight,
+            alpha=alpha,
+            beta=beta,
+            smooth=smooth,
+            pos_weight=pos_weight,
+            batch_tversky=batch_tversky,
+            channel_names=channel_names,
+        )
+
+    dice_weight = float(loss_cfg.get("dice_weight", 0.5))
+    batch_dice = bool(loss_cfg.get("batch_dice", True))
     return BCEDiceLoss(
         bce_weight=bce_weight,
         dice_weight=dice_weight,
@@ -437,9 +604,11 @@ def build_nt_xent_loss_from_config(
 
 __all__ = [
     "BCEDiceLoss",
+    "BCETverskyLoss",
     "CANONICAL_LESION_ORDER",
     "NTXentLoss",
     "SoftDiceLoss",
+    "TverskyLoss",
     "build_loss_from_config",
     "build_nt_xent_loss_from_config",
 ]

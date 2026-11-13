@@ -403,3 +403,10 @@ python scripts/train_federated.py --config configs/federated.yaml --encoder-weig
 - **Phase 6 — Comparative Evaluation & Tracking**: Automated evaluation across Dice, IoU, AUPRC, Sensitivity, and Specificity with MLflow experiment tracking.
 - **Phase 7 — Interactive Dashboard & Inference API**: FastAPI model serving endpoint and multi-page Streamlit dashboard for clinician-friendly lesion visualization and cross-regime comparison.
 
+
+## Task 16: Inference CLI and Demonstration App
+
+- CLI: `python scripts/predict.py --image <path> --output-dir outputs/predictions` (best FedAvg checkpoint, round 17, frozen thresholds MA 0.25 / HE 0.40 / EX 0.35 / SE 0.35).
+- Web demo: `python scripts/run_demo.py --host 127.0.0.1 --port 8000` with tabs for live inference, Flower federated architecture, 20-round training history, and the final held-out benchmark (read from `logs/federated/final_threshold_test_report.json`).
+- Pre-loaded demo images come from the validation/training splits only; the held-out test images are not used by the demo.
+- Prototype for research and demonstration only; not clinically certified.
