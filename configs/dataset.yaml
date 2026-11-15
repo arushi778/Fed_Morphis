@@ -81,3 +81,29 @@ train_validation_test_split:
   train: 0.70
   validation: 0.15
   test: 0.15
+
+# High-resolution patch-based training configuration (Stage 1)
+patch_training:
+  enabled: false                 # Keep false by default so baseline resizing remains default!
+  patch_size: 512                # Patch height and width (e.g. 512 or 384)
+  stride: 256                    # Stride between candidate extraction patches
+  sampling_strategy: "lesion_aware" # "lesion_aware" or "uniform"
+  background_ratio: 0.25         # Expected probabilistic quota for lesion-free background patches (Bernoulli draw per sample when background candidates exist)
+  sampling_weights:              # Hierarchical sampling weights for rare lesion classes
+    MA: 5.0                      # Microaneurysms (highest priority)
+    SE: 3.0                      # Soft Exudates
+    HE: 2.0                      # Hemorrhages
+    EX: 1.0                      # Hard Exudates
+    background: 0.5              # Background retina
+  epoch_samples: 500             # Number of patches sampled per epoch
+  seed: 42                       # Sampling reproducibility seed
+  cache_fov_images: true         # Cache FOV crops in RAM for faster epoch sampling
+
+# Full-resolution sliding-window inference configuration (Stage 1)
+sliding_window_inference:
+  patch_size: 512                # Inference window size
+  overlap: 0.50                  # 50% overlap (stride = patch_size * (1 - overlap))
+  blending: "gaussian"           # "gaussian" or "hann"
+  gaussian_sigma_scale: 0.125    # Sigma scale for Gaussian window
+  batch_size: 4                  # Batch size of patches sent to GPU
+

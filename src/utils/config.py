@@ -51,6 +51,22 @@ SUPPORTED_ENCODER_WEIGHT_SOURCES: tuple[str, ...] = (
 )
 SUPPORTED_OPTIMIZERS: tuple[str, ...] = ("adam", "adamw", "sgd")
 SUPPORTED_MONITOR_MODES: tuple[str, ...] = ("max", "min")
+SUPPORTED_LOSS_TYPES: tuple[str, ...] = (
+    "bce",
+    "weighted_bce",
+    "dice",
+    "soft_dice",
+    "balanced_dice",
+    "tversky",
+    "focal_tversky",
+    "bce_dice",
+    "weighted_bce_dice",
+    "bce_balanced_dice",
+    "bce_tversky",
+    "weighted_bce_tversky",
+    "bce_focal_tversky",
+    "weighted_bce_focal_tversky",
+)
 CANONICAL_MODEL_CHANNELS: tuple[str, ...] = ("MA", "HE", "EX", "SE")
 
 
@@ -380,39 +396,126 @@ def validate_model_config(config: Mapping[str, Any]) -> None:
 
     if "loss" in cfg:
         loss_cfg = _require_mapping(cfg["loss"], f"{ctx}:loss")
-        loss_type = str(loss_cfg.get("type", "bce_dice")).strip().lower()
-        bce_w = float(
-            _require_number(
-                loss_cfg.get("bce_weight", 0.5),
-                "loss.bce_weight",
-                ctx,
-                min_value=0.0,
-            )
+        loss_type_raw = _require_non_empty_str(
+            loss_cfg.get("type", "bce_dice"), "loss.type", ctx
         )
-        second_w = float(
-            _require_number(
-                loss_cfg.get("tversky_weight", loss_cfg.get("dice_weight", 0.5)),
-                "loss.dice_weight or loss.tversky_weight",
-                ctx,
-                min_value=0.0,
-            )
-        )
-        if (bce_w + second_w) <= 0.0:
+        loss_type = loss_type_raw.strip().lower()
+        if loss_type not in SUPPORTED_LOSS_TYPES:
             raise ConfigValidationError(
-                f"[{ctx}] 'loss.bce_weight' + 'loss.dice_weight' (or tversky_weight) must be > 0."
+                f"[{ctx}] Field 'loss.type' must be one of {SUPPORTED_LOSS_TYPES}, got {loss_type_raw!r}."
             )
+
+        # Validate any component weight fields that are explicitly present in loss_cfg
+        for w_field in ("bce_weight", "dice_weight", "tversky_weight", "focal_tversky_weight"):
+            if w_field in loss_cfg:
+                _require_number(
+                    loss_cfg[w_field],
+                    f"loss.{w_field}",
+                    ctx,
+                    min_value=0.0,
+                )
+
+        if loss_type in {"bce", "weighted_bce"}:
+            bce_w = float(
+                _require_number(
+                    loss_cfg.get("bce_weight", 1.0),
+                    "loss.bce_weight",
+                    ctx,
+                    min_value=0.0,
+                    strict_min=True,
+                )
+            )
+            _ = bce_w
+        elif loss_type in {"dice", "soft_dice", "balanced_dice"}:
+            if "dice_weight" in loss_cfg:
+                _require_number(
+                    loss_cfg["dice_weight"],
+                    "loss.dice_weight",
+                    ctx,
+                    min_value=0.0,
+                    strict_min=True,
+                )
+        elif loss_type == "tversky":
+            if "tversky_weight" in loss_cfg:
+                _require_number(
+                    loss_cfg["tversky_weight"],
+                    "loss.tversky_weight",
+                    ctx,
+                    min_value=0.0,
+                    strict_min=True,
+                )
+        elif loss_type == "focal_tversky":
+            if "focal_tversky_weight" in loss_cfg:
+                _require_number(
+                    loss_cfg["focal_tversky_weight"],
+                    "loss.focal_tversky_weight",
+                    ctx,
+                    min_value=0.0,
+                    strict_min=True,
+                )
+        else:
+            bce_w = float(
+                _require_number(
+                    loss_cfg.get("bce_weight", 0.5),
+                    "loss.bce_weight",
+                    ctx,
+                    min_value=0.0,
+                )
+            )
+            if loss_type in {"bce_focal_tversky", "weighted_bce_focal_tversky"}:
+                second_raw = loss_cfg.get(
+                    "focal_tversky_weight",
+                    loss_cfg.get("tversky_weight", loss_cfg.get("dice_weight", 0.5)),
+                )
+                second_label = "loss.focal_tversky_weight (or tversky_weight/dice_weight)"
+            elif loss_type in {"bce_tversky", "weighted_bce_tversky"}:
+                second_raw = loss_cfg.get("tversky_weight", loss_cfg.get("dice_weight", 0.5))
+                second_label = "loss.tversky_weight (or dice_weight)"
+            else:
+                # "bce_dice", "weighted_bce_dice", "bce_balanced_dice"
+                second_raw = loss_cfg.get("dice_weight", 0.5)
+                second_label = "loss.dice_weight"
+
+            second_w = float(
+                _require_number(
+                    second_raw,
+                    second_label,
+                    ctx,
+                    min_value=0.0,
+                )
+            )
+            if (bce_w + second_w) <= 0.0:
+                raise ConfigValidationError(
+                    f"[{ctx}] 'loss.bce_weight' + '{second_label}' must be > 0."
+                )
+
         if "smooth" in loss_cfg:
             _require_number(
                 loss_cfg["smooth"], "loss.smooth", ctx, min_value=0.0, strict_min=True
             )
-        if "alpha" in loss_cfg:
+        if "eps" in loss_cfg and loss_cfg["eps"] is not None:
             _require_number(
-                loss_cfg["alpha"], "loss.alpha", ctx, min_value=0.0, max_value=1.0
+                loss_cfg["eps"], "loss.eps", ctx, min_value=0.0, strict_min=True
             )
-        if "beta" in loss_cfg:
+        if "alpha" in loss_cfg or "beta" in loss_cfg:
+            alpha_val = _require_number(
+                loss_cfg.get("alpha", 0.3), "loss.alpha", ctx, min_value=0.0, max_value=1.0
+            )
+            beta_val = _require_number(
+                loss_cfg.get("beta", 0.7), "loss.beta", ctx, min_value=0.0, max_value=1.0
+            )
+            if (alpha_val + beta_val) <= 0.0:
+                raise ConfigValidationError(
+                    f"[{ctx}] 'loss.alpha' + 'loss.beta' must be > 0, got alpha={alpha_val}, beta={beta_val}."
+                )
+        if "gamma" in loss_cfg and loss_cfg["gamma"] is not None:
             _require_number(
-                loss_cfg["beta"], "loss.beta", ctx, min_value=0.0, max_value=1.0
+                loss_cfg["gamma"], "loss.gamma", ctx, min_value=0.0, strict_min=True
             )
+        if "batch_dice" in loss_cfg:
+            _require_bool(loss_cfg["batch_dice"], "loss.batch_dice", ctx)
+        if "batch_tversky" in loss_cfg:
+            _require_bool(loss_cfg["batch_tversky"], "loss.batch_tversky", ctx)
         if "pos_weight" in loss_cfg and loss_cfg["pos_weight"] is not None:
             pw = loss_cfg["pos_weight"]
             if not isinstance(pw, (list, tuple)) or len(pw) != 4:
@@ -420,9 +523,30 @@ def validate_model_config(config: Mapping[str, Any]) -> None:
                     f"[{ctx}] Field 'loss.pos_weight' must be a sequence of 4 positive numbers corresponding to [MA, HE, EX, SE], got {pw!r}."
                 )
             for w in pw:
-                if isinstance(w, bool) or not isinstance(w, (int, float)) or float(w) <= 0.0:
+                if (
+                    isinstance(w, bool)
+                    or not isinstance(w, (int, float))
+                    or not math.isfinite(float(w))
+                    or float(w) <= 0.0
+                ):
                     raise ConfigValidationError(
                         f"[{ctx}] 'loss.pos_weight' elements must be positive numbers > 0, got {w!r}."
+                    )
+        if "class_weights" in loss_cfg and loss_cfg["class_weights"] is not None:
+            cw = loss_cfg["class_weights"]
+            if not isinstance(cw, (list, tuple)) or len(cw) != 4:
+                raise ConfigValidationError(
+                    f"[{ctx}] Field 'loss.class_weights' must be a sequence of 4 positive numbers corresponding to [MA, HE, EX, SE], got {cw!r}."
+                )
+            for w in cw:
+                if (
+                    isinstance(w, bool)
+                    or not isinstance(w, (int, float))
+                    or not math.isfinite(float(w))
+                    or float(w) <= 0.0
+                ):
+                    raise ConfigValidationError(
+                        f"[{ctx}] 'loss.class_weights' elements must be finite positive numbers > 0, got {w!r}."
                     )
 
     if "training" in cfg:

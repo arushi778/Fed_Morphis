@@ -52,6 +52,15 @@ from typing import Any
 import torch
 
 from src.data.masks import CANONICAL_LESION_CHANNELS
+from src.models.aupr import (
+    AUPRTracker,
+    ChannelPRResult,
+    DEFAULT_FROZEN_THRESHOLDS,
+    DEFAULT_OPERATING_THRESHOLDS,
+    PROTOCOL_NAME,
+    compute_channel_pr_curve,
+    compute_multilabel_aupr,
+)
 
 CANONICAL_LESION_ORDER: tuple[str, ...] = tuple(CANONICAL_LESION_CHANNELS)
 METRIC_NAMES: tuple[str, ...] = (

@@ -300,11 +300,119 @@ def crop_image_and_mask_to_fov(
     return cropped_image, cropped_mask, final_box
 
 
+def compute_retinal_fov_mask(
+    image: np.ndarray,
+    mask: np.ndarray | None = None,
+    threshold: int = DEFAULT_FOV_THRESHOLD,
+    min_fov_fraction: float = DEFAULT_MIN_FOV_FRACTION,
+    preserve_boundary_lesions: bool = True,
+    mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
+    std: tuple[float, float, float] = (0.229, 0.224, 0.225),
+) -> np.ndarray:
+    """Compute a 2D boolean retinal field-of-view (FOV) mask excluding dark exterior corners.
+
+    Uses the same channel-wise maximum intensity rule (``intensity > threshold`` on
+    the ``[0, 255]`` scale) and fallback semantics as :func:`detect_retinal_fov` and
+    :func:`crop_image_and_mask_to_fov`. Automatically handles raw ``[0, 255]`` arrays,
+    ``[0.0, 1.0]`` float arrays, and ImageNet-normalized tensors/arrays in either
+    ``(H, W, C)`` or ``(C, H, W)`` layout.
+
+    Args:
+        image: 2D ``(H, W)`` or 3D ``(H, W, C)`` / ``(C, H, W)`` image array.
+        mask: Optional ground-truth lesion mask of shape ``(H, W)``, ``(H, W, C)``,
+            or ``(C, H, W)``. When ``preserve_boundary_lesions=True``, any positive
+            ground-truth lesion pixel is guaranteed to be included in the valid mask.
+        threshold: Intensity threshold on the ``[0, 255]`` scale (default ``10``).
+        min_fov_fraction: Minimum fraction of image area required before falling back
+            to the full image mask (default ``0.01``).
+        preserve_boundary_lesions: Whether to union positive ``mask`` pixels into the
+            valid FOV mask (default ``True``).
+        mean: Per-channel RGB normalization mean used if ``image`` is normalized.
+        std: Per-channel RGB normalization std used if ``image`` is normalized.
+
+    Returns:
+        2D boolean ``np.ndarray`` of shape ``(H, W)`` where ``True`` indicates valid
+        retinal foreground pixels and ``False`` indicates exterior background corners.
+    """
+    if not isinstance(image, np.ndarray):
+        image = np.asarray(image)
+    if image.ndim not in (2, 3):
+        raise ValueError(
+            f"Expected 2D or 3D image array for FOV mask, got shape {image.shape}."
+        )
+
+    # Normalize layout to (H, W) or (H, W, C)
+    if image.ndim == 3 and image.shape[0] in (1, 3, 4) and image.shape[2] not in (1, 3, 4):
+        img_hwc = np.transpose(image, (1, 2, 0))
+    else:
+        img_hwc = image
+
+    h, w = int(img_hwc.shape[0]), int(img_hwc.shape[1])
+    if h <= 0 or w <= 0:
+        raise ValueError(f"Image dimensions must be positive, got shape {image.shape}.")
+
+    # Reconstruct [0, 255] intensity scale consistently across raw, [0, 1], and normalized inputs
+    img_min = float(np.min(img_hwc))
+    img_max = float(np.max(img_hwc))
+    if np.issubdtype(img_hwc.dtype, np.integer):
+        img_255 = img_hwc.astype(np.float32, copy=False)
+    elif img_min < -1e-4:
+        if img_hwc.ndim == 3 and img_hwc.shape[2] >= 3:
+            mean_arr = np.asarray(mean, dtype=np.float32).reshape(1, 1, 3)
+            std_arr = np.asarray(std, dtype=np.float32).reshape(1, 1, 3)
+            img_255 = (img_hwc[:, :, :3].astype(np.float32, copy=False) * std_arr + mean_arr) * 255.0
+        else:
+            img_255 = (img_hwc.astype(np.float32, copy=False) * float(std[0]) + float(mean[0])) * 255.0
+    elif img_max <= 1.0 + 1e-4:
+        img_255 = img_hwc.astype(np.float32, copy=False) * 255.0
+    else:
+        img_255 = img_hwc.astype(np.float32, copy=False)
+
+    if img_255.ndim == 2:
+        intensity = img_255
+    elif img_255.shape[2] == 1:
+        intensity = img_255[:, :, 0]
+    else:
+        intensity = img_255[:, :, :3].max(axis=-1)
+
+    fg_mask: np.ndarray = intensity > float(threshold)
+    if not bool(np.any(fg_mask)):
+        return np.ones((h, w), dtype=bool)
+
+    fg_fraction = float(np.mean(fg_mask))
+    if min_fov_fraction > 0.0 and fg_fraction < min_fov_fraction:
+        return np.ones((h, w), dtype=bool)
+
+    if mask is not None and preserve_boundary_lesions:
+        mask_arr = np.asarray(mask)
+        if mask_arr.ndim == 2:
+            if mask_arr.shape != (h, w):
+                raise ValueError(
+                    f"Mask shape {mask_arr.shape} does not match image spatial shape ({h}, {w})."
+                )
+            lesion_2d = mask_arr > 0
+        elif mask_arr.ndim == 3:
+            if mask_arr.shape[:2] == (h, w):
+                lesion_2d = (mask_arr > 0).any(axis=-1)
+            elif mask_arr.shape[1:] == (h, w):
+                lesion_2d = (mask_arr > 0).any(axis=0)
+            else:
+                raise ValueError(
+                    f"Mask shape {mask_arr.shape} does not align with image spatial shape ({h}, {w})."
+                )
+        else:
+            raise ValueError(f"Unsupported mask dimensions: {mask_arr.shape}.")
+        fg_mask = fg_mask | lesion_2d
+
+    return fg_mask
+
+
 __all__ = [
     "DEFAULT_FOV_MARGIN",
     "DEFAULT_FOV_THRESHOLD",
     "DEFAULT_MIN_FOV_FRACTION",
     "FOVCropMetadata",
+    "compute_retinal_fov_mask",
     "crop_image_and_mask_to_fov",
     "detect_retinal_fov",
 ]
