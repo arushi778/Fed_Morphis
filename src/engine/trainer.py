@@ -27,7 +27,11 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
 from src.data.masks import CANONICAL_LESION_CHANNELS
-from src.models.losses import BCEDiceLoss
+from src.models.losses import (
+    BCEDiceLoss,
+    extract_loss_components,
+    extract_loss_components_with_per_channel,
+)
 from src.models.metrics import SegmentationMetricTracker
 from src.models.unet import PretrainedWeightsError
 from src.utils.logger import get_logger
@@ -87,6 +91,50 @@ def verify_no_test_split_leakage(
                         "used for training."
                     )
         dataset = getattr(dataset, "dataset", None)
+
+
+def inspect_dataloader_batch_distribution(
+    dataset_len: int,
+    batch_size: int,
+    drop_last: bool = False,
+) -> dict[str, Any]:
+    """Inspect DataLoader batch counts and tail-batch size for BatchNorm safety."""
+    if dataset_len < 0:
+        raise ValueError(f"dataset_len must be >= 0, got {dataset_len}")
+    if batch_size < 1:
+        raise ValueError(f"batch_size must be >= 1, got {batch_size}")
+
+    if dataset_len == 0:
+        return {
+            "dataset_len": 0,
+            "batch_size": int(batch_size),
+            "drop_last": bool(drop_last),
+            "num_batches": 0,
+            "full_batches": 0,
+            "remainder_samples": 0,
+            "tail_batch_size": 0,
+            "has_singleton_tail_batch": False,
+        }
+
+    full_batches = dataset_len // batch_size
+    remainder = dataset_len % batch_size
+    if drop_last:
+        num_batches = full_batches
+        tail_batch_size = batch_size if full_batches > 0 else 0
+    else:
+        num_batches = full_batches + (1 if remainder > 0 else 0)
+        tail_batch_size = remainder if remainder > 0 else batch_size
+
+    return {
+        "dataset_len": int(dataset_len),
+        "batch_size": int(batch_size),
+        "drop_last": bool(drop_last),
+        "num_batches": int(num_batches),
+        "full_batches": int(full_batches),
+        "remainder_samples": int(remainder),
+        "tail_batch_size": int(tail_batch_size),
+        "has_singleton_tail_batch": bool(not drop_last and tail_batch_size == 1),
+    }
 
 
 def _verify_batch_metadata_no_test_split(
@@ -327,6 +375,14 @@ class SupervisedSegmentationTrainer:
         total_loss_sum = 0.0
         total_bce_sum = 0.0
         total_dice_loss_sum = 0.0
+        per_channel_bce_sums: dict[str, float] = {ch: 0.0 for ch in CANONICAL_LESION_ORDER}
+        per_channel_overlap_sums: dict[str, float] = {ch: 0.0 for ch in CANONICAL_LESION_ORDER}
+        primary_comp_name = getattr(self.criterion, "primary_component_name", "bce")
+        secondary_comp_name = getattr(
+            self.criterion,
+            "secondary_component_name",
+            getattr(self.criterion, "component_name", "dice"),
+        )
         total_samples = 0
         batches_processed = 0
         grad_norm_last = 0.0
@@ -366,16 +422,17 @@ class SupervisedSegmentationTrainer:
                 enabled=self.amp_enabled,
             ):
                 logits = self.model(images)
-                if isinstance(self.criterion, BCEDiceLoss):
-                    loss, bce_t, dice_t, _, _ = self.criterion.forward_tensors(
-                        logits, masks
-                    )
-                    bce_val = float(bce_t.detach().item())
-                    dice_val = float(dice_t.detach().item())
-                else:
-                    loss = self.criterion(logits, masks)
-                    bce_val = float(loss.detach().item())
-                    dice_val = 0.0
+                (
+                    loss,
+                    bce_val,
+                    dice_val,
+                    primary_comp_name,
+                    secondary_comp_name,
+                    batch_per_ch_bce,
+                    batch_per_ch_overlap,
+                ) = extract_loss_components_with_per_channel(
+                    self.criterion, logits, masks
+                )
 
             if not torch.isfinite(loss):
                 raise RuntimeError(
@@ -410,6 +467,11 @@ class SupervisedSegmentationTrainer:
             total_loss_sum += loss_scalar * batch_size
             total_bce_sum += bce_val * batch_size
             total_dice_loss_sum += dice_val * batch_size
+            for ch in CANONICAL_LESION_ORDER:
+                per_channel_bce_sums[ch] += float(batch_per_ch_bce.get(ch, 0.0)) * batch_size
+                per_channel_overlap_sums[ch] += (
+                    float(batch_per_ch_overlap.get(ch, 0.0)) * batch_size
+                )
             total_samples += batch_size
             batches_processed += 1
             self.global_step += 1
@@ -461,12 +523,34 @@ class SupervisedSegmentationTrainer:
         mean_loss = total_loss_sum / total_samples
         mean_bce = total_bce_sum / total_samples
         mean_dice_loss = total_dice_loss_sum / total_samples
+        mean_per_ch_bce = {
+            ch: float(per_channel_bce_sums[ch] / total_samples)
+            for ch in CANONICAL_LESION_ORDER
+        }
+        mean_per_ch_overlap = {
+            ch: float(per_channel_overlap_sums[ch] / total_samples)
+            for ch in CANONICAL_LESION_ORDER
+        }
 
-        return {
+        train_result: dict[str, Any] = {
             "epoch": int(epoch),
             "loss": float(mean_loss),
             "bce_loss": float(mean_bce),
             "dice_loss": float(mean_dice_loss),
+            "overlap_loss": float(mean_dice_loss),
+            "overlap_component_name": str(secondary_comp_name),
+            "primary_loss_component": str(primary_comp_name),
+            "secondary_loss_component": str(secondary_comp_name),
+            "per_channel_bce": mean_per_ch_bce,
+            "per_channel_overlap": mean_per_ch_overlap,
+            "loss_components": {
+                "primary_name": str(primary_comp_name),
+                "secondary_name": str(secondary_comp_name),
+                "primary_loss": float(mean_bce),
+                "secondary_loss": float(mean_dice_loss),
+                "per_channel_primary": mean_per_ch_bce,
+                "per_channel_secondary": mean_per_ch_overlap,
+            },
             "dice_macro": float(metrics_summary["macro"]["dice"]),
             "iou_macro": float(metrics_summary["macro"]["iou"]),
             "grad_norm_last": float(grad_norm_last),
@@ -475,6 +559,10 @@ class SupervisedSegmentationTrainer:
             "elapsed_sec": round(elapsed, 4),
             "metrics": metrics_summary,
         }
+        if secondary_comp_name not in {"none", "custom"}:
+            train_result[f"{secondary_comp_name}_loss"] = float(mean_dice_loss)
+            train_result[f"per_channel_{secondary_comp_name}"] = dict(mean_per_ch_overlap)
+        return train_result
 
     @torch.no_grad()
     def validate_one_epoch(
@@ -496,6 +584,14 @@ class SupervisedSegmentationTrainer:
         total_loss_sum = 0.0
         total_bce_sum = 0.0
         total_dice_loss_sum = 0.0
+        per_channel_bce_sums: dict[str, float] = {ch: 0.0 for ch in CANONICAL_LESION_ORDER}
+        per_channel_overlap_sums: dict[str, float] = {ch: 0.0 for ch in CANONICAL_LESION_ORDER}
+        primary_comp_name = getattr(self.criterion, "primary_component_name", "bce")
+        secondary_comp_name = getattr(
+            self.criterion,
+            "secondary_component_name",
+            getattr(self.criterion, "component_name", "dice"),
+        )
         total_samples = 0
         batches_processed = 0
         start_time = time.perf_counter()
@@ -516,22 +612,28 @@ class SupervisedSegmentationTrainer:
                 enabled=self.amp_enabled,
             ):
                 logits = self.model(images)
-                if isinstance(self.criterion, BCEDiceLoss):
-                    loss, bce_t, dice_t, _, _ = self.criterion.forward_tensors(
-                        logits, masks
-                    )
-                    bce_val = float(bce_t.detach().item())
-                    dice_val = float(dice_t.detach().item())
-                else:
-                    loss = self.criterion(logits, masks)
-                    bce_val = float(loss.detach().item())
-                    dice_val = 0.0
+                (
+                    loss,
+                    bce_val,
+                    dice_val,
+                    primary_comp_name,
+                    secondary_comp_name,
+                    batch_per_ch_bce,
+                    batch_per_ch_overlap,
+                ) = extract_loss_components_with_per_channel(
+                    self.criterion, logits, masks
+                )
 
             tracker.update(logits.detach(), masks.detach())
 
             total_loss_sum += float(loss.detach().item()) * batch_size
             total_bce_sum += bce_val * batch_size
             total_dice_loss_sum += dice_val * batch_size
+            for ch in CANONICAL_LESION_ORDER:
+                per_channel_bce_sums[ch] += float(batch_per_ch_bce.get(ch, 0.0)) * batch_size
+                per_channel_overlap_sums[ch] += (
+                    float(batch_per_ch_overlap.get(ch, 0.0)) * batch_size
+                )
             total_samples += batch_size
             batches_processed += 1
 
@@ -543,12 +645,34 @@ class SupervisedSegmentationTrainer:
         mean_loss = total_loss_sum / total_samples
         mean_bce = total_bce_sum / total_samples
         mean_dice_loss = total_dice_loss_sum / total_samples
+        mean_per_ch_bce = {
+            ch: float(per_channel_bce_sums[ch] / total_samples)
+            for ch in CANONICAL_LESION_ORDER
+        }
+        mean_per_ch_overlap = {
+            ch: float(per_channel_overlap_sums[ch] / total_samples)
+            for ch in CANONICAL_LESION_ORDER
+        }
 
-        return {
+        val_result: dict[str, Any] = {
             "epoch": int(epoch),
             "loss": float(mean_loss),
             "bce_loss": float(mean_bce),
             "dice_loss": float(mean_dice_loss),
+            "overlap_loss": float(mean_dice_loss),
+            "overlap_component_name": str(secondary_comp_name),
+            "primary_loss_component": str(primary_comp_name),
+            "secondary_loss_component": str(secondary_comp_name),
+            "per_channel_bce": mean_per_ch_bce,
+            "per_channel_overlap": mean_per_ch_overlap,
+            "loss_components": {
+                "primary_name": str(primary_comp_name),
+                "secondary_name": str(secondary_comp_name),
+                "primary_loss": float(mean_bce),
+                "secondary_loss": float(mean_dice_loss),
+                "per_channel_primary": mean_per_ch_bce,
+                "per_channel_secondary": mean_per_ch_overlap,
+            },
             "dice_macro": float(metrics_summary["macro"]["dice"]),
             "iou_macro": float(metrics_summary["macro"]["iou"]),
             "num_samples": int(total_samples),
@@ -556,6 +680,10 @@ class SupervisedSegmentationTrainer:
             "elapsed_sec": round(elapsed, 4),
             "metrics": metrics_summary,
         }
+        if secondary_comp_name not in {"none", "custom"}:
+            val_result[f"{secondary_comp_name}_loss"] = float(mean_dice_loss)
+            val_result[f"per_channel_{secondary_comp_name}"] = dict(mean_per_ch_overlap)
+        return val_result
 
     def save_checkpoint(
         self,
@@ -724,7 +852,29 @@ class SupervisedSegmentationTrainer:
                 "epoch": int(epoch),
                 "learning_rate": epoch_lr,
                 "next_learning_rate": next_lr,
+                "primary_loss_component": str(
+                    train_summary.get("primary_loss_component", "bce")
+                ),
+                "secondary_loss_component": str(
+                    train_summary.get("secondary_loss_component", "dice")
+                ),
+                "overlap_component_name": str(
+                    train_summary.get(
+                        "overlap_component_name",
+                        train_summary.get("secondary_loss_component", "dice"),
+                    )
+                ),
                 "train_loss": float(train_summary["loss"]),
+                "train_bce_loss": float(train_summary.get("bce_loss", 0.0)),
+                "train_overlap_loss": float(
+                    train_summary.get("overlap_loss", train_summary.get("dice_loss", 0.0))
+                ),
+                "train_per_channel_bce": dict(
+                    train_summary.get("per_channel_bce", {})
+                ),
+                "train_per_channel_overlap": dict(
+                    train_summary.get("per_channel_overlap", {})
+                ),
                 "train_dice_macro": float(train_summary["dice_macro"]),
                 "train_dice_macro_present_only": (
                     float(train_present_only["dice"])
@@ -732,6 +882,14 @@ class SupervisedSegmentationTrainer:
                     else float(train_summary["dice_macro"])
                 ),
                 "val_loss": float(val_summary["loss"]),
+                "val_bce_loss": float(val_summary.get("bce_loss", 0.0)),
+                "val_overlap_loss": float(
+                    val_summary.get("overlap_loss", val_summary.get("dice_loss", 0.0))
+                ),
+                "val_per_channel_bce": dict(val_summary.get("per_channel_bce", {})),
+                "val_per_channel_overlap": dict(
+                    val_summary.get("per_channel_overlap", {})
+                ),
                 "val_dice_macro": float(val_summary["dice_macro"]),
                 "val_dice_macro_present_only": (
                     float(val_present_only["dice"])

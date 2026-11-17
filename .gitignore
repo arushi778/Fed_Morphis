@@ -43,6 +43,7 @@ checkpoints/segmentation/*
 !checkpoints/segmentation/.gitkeep
 checkpoints/federated/*
 !checkpoints/federated/.gitkeep
+checkpoints/loss_experiments/
 
 # Experiments, MLflow runs, and logs
 experiments/*
@@ -57,6 +58,10 @@ logs/*
 !logs/simclr_finetuned_ddr_report.json
 mlruns/
 mlartifacts/
+
+# Generated outputs (inference predictions, visualization artifacts)
+outputs/*
+!outputs/.gitkeep
 
 # Testing & coverage
 .pytest_cache/

@@ -1,0 +1,49 @@
+# Stage 4 Experiment E5: Conditional Combined (Weighted BCE + Focal Tversky)
+# Conditional template: gamma should be selected from the winning Focal Tversky
+# candidate (E3 vs E4) and pos_weight retained only if E1 improves validation metrics.
+architecture: "UNet"
+encoder: "resnet50"
+pretrained: true
+strict_pretrained: false
+input_channels: 3
+number_of_classes: 4
+output_channels: 4
+output_channel_order:
+  - "MA"
+  - "HE"
+  - "EX"
+  - "SE"
+
+decoder:
+  channels: [256, 128, 64, 32, 16]
+  use_batchnorm: true
+  dropout: 0.1
+  activation: null
+
+encoder_weights_source: "imagenet"
+ssl_checkpoint_path: "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
+
+loss:
+  type: "weighted_bce_focal_tversky"
+  bce_weight: 0.5
+  focal_tversky_weight: 0.5
+  alpha: 0.3
+  beta: 0.7
+  gamma: 1.3333333333333333
+  eps: 1.0e-6
+  smooth: 1.0e-5
+  pos_weight: [25.0, 12.611725, 14.828132, 25.0]
+  pos_weight_source: "derived_from_train_metadata"
+  class_weights: null
+
+training:
+  optimizer: "adamw"
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  epochs: 50
+  mixed_precision: true
+  gradient_clip_max_norm: 1.0
+  metric_threshold: 0.5
+  checkpoint_directory: "checkpoints/loss_experiments/E5_combined_conditional"
+  monitor_metric: "val_dice_macro"
+  monitor_mode: "max"

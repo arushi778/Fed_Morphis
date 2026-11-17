@@ -1,0 +1,49 @@
+# Stage 4 Experiment E1: Weighted BCE + Tversky
+# Isolates training-derived positive class weighting (pos_weight) relative to E0.
+# pos_weight derived from combined 427-record training split via derive_training_class_weights(
+#   mode="sqrt_dampened", pixel_domain="fov_crop_box", min_weight=1.0, max_weight=25.0, normalize_mean=False
+# )
+architecture: "UNet"
+encoder: "resnet50"
+pretrained: true
+strict_pretrained: false
+input_channels: 3
+number_of_classes: 4
+output_channels: 4
+output_channel_order:
+  - "MA"
+  - "HE"
+  - "EX"
+  - "SE"
+
+decoder:
+  channels: [256, 128, 64, 32, 16]
+  use_batchnorm: true
+  dropout: 0.1
+  activation: null
+
+encoder_weights_source: "imagenet"
+ssl_checkpoint_path: "checkpoints/ssl/ddr_simclr/best_simclr_encoder.pt"
+
+loss:
+  type: "weighted_bce_tversky"
+  bce_weight: 0.5
+  tversky_weight: 0.5
+  alpha: 0.3
+  beta: 0.7
+  smooth: 1.0e-5
+  pos_weight: [25.0, 12.611725, 14.828132, 25.0]
+  pos_weight_source: "derived_from_train_metadata"
+  class_weights: null
+
+training:
+  optimizer: "adamw"
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  epochs: 50
+  mixed_precision: true
+  gradient_clip_max_norm: 1.0
+  metric_threshold: 0.5
+  checkpoint_directory: "checkpoints/loss_experiments/E1_weighted_bce"
+  monitor_metric: "val_dice_macro"
+  monitor_mode: "max"

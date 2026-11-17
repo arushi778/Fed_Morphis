@@ -11,11 +11,16 @@ Supports:
 from __future__ import annotations
 
 import argparse
+import copy
+from datetime import datetime, timezone
+import hashlib
 import json
 import sys
 import time
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -29,12 +34,18 @@ from src.data.dataset import (
 )
 from src.data.manifests import load_manifest_json
 from src.data.transforms import build_segmentation_transforms
+from src.engine.evaluator import evaluate_aupr_dataset
 from src.engine.trainer import (
     SupervisedSegmentationTrainer,
     build_optimizer_from_config,
     build_validation_comparison_report,
+    inspect_dataloader_batch_distribution,
 )
-from src.models.losses import build_loss_from_config
+from src.federated.data import (
+    carve_client_validation_records,
+    verify_client_split_integrity,
+)
+from src.models.losses import build_loss_from_config, summarize_loss_configuration
 from src.models.unet import build_unet_from_config
 from src.utils.config import (
     load_yaml_config,
@@ -148,6 +159,43 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Override checkpoint output directory.",
     )
     parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Isolated experiment output directory for checkpoints, effective config, and reports.",
+    )
+    parser.add_argument(
+        "--init-checkpoint",
+        type=str,
+        default=None,
+        help="Path to initial model checkpoint (.pt) loaded before epoch 1 (mutually exclusive with --resume).",
+    )
+    parser.add_argument(
+        "--create-init-checkpoint",
+        type=str,
+        default=None,
+        help="Create a deterministic initial model checkpoint at this path and exit without training.",
+    )
+    parser.add_argument(
+        "--val-split-mode",
+        type=str,
+        default="official_and_carved",
+        choices=["official_and_carved", "official_only", "carved_only"],
+        help="Validation split resolution mode (default: official_and_carved).",
+    )
+    parser.add_argument(
+        "--val-carve-ratio",
+        type=float,
+        default=0.2,
+        help="Validation carve ratio when a dataset has no official validation split (default: 0.2).",
+    )
+    parser.add_argument(
+        "--split-seed",
+        type=int,
+        default=42,
+        help="Deterministic seed for validation carving (default: 42).",
+    )
+    parser.add_argument(
         "--resume",
         type=str,
         default=None,
@@ -177,20 +225,217 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _select_train_val_records(
+def _resolve_cli_path(path_like: str | Path) -> Path:
+    """Resolve a relative CLI path against ``PROJECT_ROOT`` while preserving absolute paths."""
+    p = Path(path_like)
+    return p if p.is_absolute() else (PROJECT_ROOT / p)
+
+
+def compute_file_sha256(path: str | Path) -> str:
+    """Compute hex SHA-256 digest of a file on disk."""
+    file_path = Path(path)
+    hasher = hashlib.sha256()
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def compute_state_dict_sha256(state_dict: dict[str, Any]) -> str:
+    """Compute a deterministic SHA-256 digest over sorted parameter/buffer tensors."""
+    hasher = hashlib.sha256()
+    for key in sorted(state_dict.keys()):
+        hasher.update(key.encode("utf-8"))
+        val = state_dict[key]
+        if isinstance(val, torch.Tensor):
+            t_cpu = val.detach().cpu().contiguous()
+            hasher.update(str(tuple(t_cpu.shape)).encode("utf-8"))
+            hasher.update(str(t_cpu.dtype).encode("utf-8"))
+            hasher.update(t_cpu.numpy().tobytes())
+        else:
+            hasher.update(repr(val).encode("utf-8"))
+    return hasher.hexdigest()
+
+
+def create_initial_model_checkpoint(
+    model_cfg: dict[str, Any],
+    output_path: str | Path,
+    *,
+    seed: int = 42,
+    deterministic: bool = True,
+    strict_pretrained_override: bool | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Create and persist a deterministic initial model checkpoint without training."""
+    target_path = _resolve_cli_path(output_path)
+    if target_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"Refusing to overwrite existing initialization checkpoint: {target_path}. "
+            "Remove it or pass overwrite=True explicitly."
+        )
+
+    set_seed(seed=int(seed), deterministic=bool(deterministic))
+    cfg_snapshot = copy.deepcopy(model_cfg)
+    model = build_unet_from_config(
+        cfg_snapshot,
+        strict_pretrained_override=strict_pretrained_override,
+    )
+    state_dict = model.state_dict()
+    state_sha256 = compute_state_dict_sha256(state_dict)
+
+    payload: dict[str, Any] = {
+        "format": "fedmorphis_initial_checkpoint_v1",
+        "seed": int(seed),
+        "deterministic": bool(deterministic),
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "model_summary": model.get_model_summary(),
+        "model_config": cfg_snapshot,
+        "model_state_dict": state_dict,
+        "model_state_sha256": state_sha256,
+    }
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(payload, target_path)
+    file_sha256 = compute_file_sha256(target_path)
+
+    return {
+        "checkpoint_path": format_project_path(target_path),
+        "absolute_path": str(target_path),
+        "file_sha256": file_sha256,
+        "model_state_sha256": state_sha256,
+        "seed": int(seed),
+        "deterministic": bool(deterministic),
+        "model_summary": payload["model_summary"],
+    }
+
+
+def load_initial_model_checkpoint(
+    model: torch.nn.Module,
+    checkpoint_path: str | Path,
+) -> dict[str, Any]:
+    """Validate and load an initial model checkpoint into ``model`` before epoch 1."""
+    ckpt_path = _resolve_cli_path(checkpoint_path)
+    if not ckpt_path.is_file():
+        raise FileNotFoundError(f"Initial checkpoint file not found: {ckpt_path}")
+
+    payload = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    if isinstance(payload, dict) and "model_state_dict" in payload:
+        ckpt_state = payload["model_state_dict"]
+        recorded_state_sha = payload.get("model_state_sha256")
+    elif isinstance(payload, dict) and payload and all(
+        isinstance(v, torch.Tensor) for v in payload.values()
+    ):
+        ckpt_state = payload
+        recorded_state_sha = None
+    else:
+        raise ValueError(
+            f"Invalid initial checkpoint payload in {ckpt_path}: "
+            "expected a dict containing 'model_state_dict' or a raw tensor state_dict."
+        )
+
+    if not isinstance(ckpt_state, dict) or len(ckpt_state) == 0:
+        raise ValueError(f"Empty or malformed model_state_dict in {ckpt_path}.")
+
+    model_state = model.state_dict()
+    ckpt_keys = set(ckpt_state.keys())
+    model_keys = set(model_state.keys())
+    missing_keys = sorted(model_keys - ckpt_keys)
+    unexpected_keys = sorted(ckpt_keys - model_keys)
+    if missing_keys or unexpected_keys:
+        raise ValueError(
+            f"Initial checkpoint architecture mismatch for {ckpt_path}: "
+            f"missing_keys={missing_keys[:5]} (total {len(missing_keys)}), "
+            f"unexpected_keys={unexpected_keys[:5]} (total {len(unexpected_keys)})."
+        )
+
+    for key in sorted(model_keys):
+        ckpt_tensor = ckpt_state[key]
+        model_tensor = model_state[key]
+        if not isinstance(ckpt_tensor, torch.Tensor):
+            raise ValueError(
+                f"Initial checkpoint entry '{key}' is not a torch.Tensor "
+                f"(got {type(ckpt_tensor).__name__})."
+            )
+        if tuple(ckpt_tensor.shape) != tuple(model_tensor.shape):
+            raise ValueError(
+                f"Initial checkpoint shape mismatch for '{key}': "
+                f"checkpoint has {tuple(ckpt_tensor.shape)}, "
+                f"model expects {tuple(model_tensor.shape)}."
+            )
+        if ckpt_tensor.is_floating_point() and not torch.isfinite(ckpt_tensor).all():
+            raise ValueError(
+                f"Initial checkpoint tensor '{key}' contains non-finite values."
+            )
+
+    model.load_state_dict(ckpt_state, strict=True)
+    loaded_state_sha = compute_state_dict_sha256(model.state_dict())
+    if recorded_state_sha is not None and str(recorded_state_sha) != loaded_state_sha:
+        raise ValueError(
+            f"Initial checkpoint state SHA-256 mismatch in {ckpt_path}: "
+            f"recorded={recorded_state_sha}, loaded={loaded_state_sha}."
+        )
+
+    return {
+        "init_checkpoint_path": format_project_path(ckpt_path),
+        "init_checkpoint_sha256": compute_file_sha256(ckpt_path),
+        "initial_model_state_sha256": loaded_state_sha,
+    }
+
+
+def verify_output_directory_safe(
+    ckpt_dir: Path,
+    report_path: Path | None,
+    *,
+    is_resume: bool,
+    is_dry_run: bool,
+) -> None:
+    """Prevent silently overwriting an existing or completed experiment unless resuming."""
+    if is_resume or is_dry_run:
+        return
+
+    conflicts: list[str] = []
+    for fname in ("best_checkpoint.pt", "latest_checkpoint.pt"):
+        candidate = ckpt_dir / fname
+        if candidate.exists():
+            conflicts.append(str(candidate))
+    if report_path is not None and report_path.exists():
+        conflicts.append(str(report_path))
+
+    if conflicts:
+        raise FileExistsError(
+            "Refusing to overwrite existing experiment artifacts without --resume: "
+            + ", ".join(conflicts)
+        )
+
+
+def resolve_supervised_train_val_records(
     records: list[dict[str, Any]],
     allowed_datasets: list[str] | None = None,
     max_train_samples: int | None = None,
     max_val_samples: int | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Select strictly non-test train and validation records from a manifest.
+    *,
+    val_split_mode: str = "official_and_carved",
+    val_carve_ratio: float = 0.2,
+    split_seed: int = 42,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Resolve strictly non-test train and validation records per dataset.
 
-    If the manifest has an explicit ``valid`` split (such as DDR), uses ``train``
-    and ``valid``. If the manifest only has ``train`` and ``test`` (such as IDRiD),
-    deterministically splits ``train`` into train/validation subsets without
-    ever touching ``test``.
+    Each dataset present after filtering is resolved independently:
+    - If a dataset has official ``valid`` records and ``val_split_mode`` allows
+      official validation (``official_and_carved`` or ``official_only``), its
+      official ``train`` and ``valid`` records are used.
+    - If a dataset has no official ``valid`` records (such as IDRiD), its
+      validation split is deterministically carved from its own ``train``
+      records via :func:`src.federated.data.carve_client_validation_records`
+      with ``seed=split_seed`` and ``val_carve_ratio``.
+    - Held-out ``test`` records are never included in train or validation.
     """
-    filtered = records
+    if val_split_mode not in {"official_and_carved", "official_only", "carved_only"}:
+        raise ValueError(
+            f"Unsupported val_split_mode {val_split_mode!r}; "
+            "expected 'official_and_carved', 'official_only', or 'carved_only'."
+        )
+
+    filtered = list(records)
     if allowed_datasets:
         allowed_norm = {d.strip().lower() for d in allowed_datasets if d.strip()}
         if allowed_norm:
@@ -200,23 +445,141 @@ def _select_train_val_records(
                 if str(r.get("dataset_name", "")).strip().lower() in allowed_norm
             ]
 
-    train_pool = [r for r in filtered if str(r.get("split")).lower() == "train"]
-    val_pool = [r for r in filtered if str(r.get("split")).lower() == "valid"]
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for r in filtered:
+        ds_name = str(r.get("dataset_name", "UNKNOWN")).strip() or "UNKNOWN"
+        grouped.setdefault(ds_name, []).append(dict(r))
 
-    if not train_pool:
-        raise ValueError("Manifest contains no 'train' split records.")
+    if not grouped:
+        raise ValueError("Manifest contains no matching records after dataset filtering.")
 
-    if not val_pool:
-        # Deterministically carve validation records from train_pool (never test)
-        val_count = max(2, len(train_pool) // 5)
-        val_pool = [dict(r, split="valid") for r in train_pool[-val_count:]]
-        train_pool = train_pool[:-val_count]
+    combined_train: list[dict[str, Any]] = []
+    combined_val: list[dict[str, Any]] = []
+    all_held_out_test: list[dict[str, Any]] = []
+    per_dataset_summary: dict[str, Any] = {}
+    carved_val_ids_by_dataset: dict[str, list[str]] = {}
+
+    for ds_name in sorted(grouped.keys()):
+        ds_records = grouped[ds_name]
+        ds_train = [
+            dict(r) for r in ds_records if str(r.get("split", "")).strip().lower() == "train"
+        ]
+        ds_official_val = [
+            dict(r)
+            for r in ds_records
+            if str(r.get("split", "")).strip().lower() in {"valid", "val"}
+        ]
+        ds_test = [
+            dict(r) for r in ds_records if str(r.get("split", "")).strip().lower() == "test"
+        ]
+        all_held_out_test.extend(ds_test)
+
+        if not ds_train:
+            raise ValueError(f"Dataset '{ds_name}' contains no 'train' split records.")
+
+        if ds_official_val and val_split_mode in {"official_and_carved", "official_only"}:
+            resolved_train = ds_train
+            resolved_val = ds_official_val
+            for rec in resolved_val:
+                rec.setdefault("val_source", "official_valid")
+            val_source = "official_valid"
+        else:
+            if val_split_mode == "official_only":
+                raise ValueError(
+                    f"Dataset '{ds_name}' has no official 'valid' records and "
+                    "val_split_mode='official_only' forbids carving."
+                )
+            resolved_train, resolved_val = carve_client_validation_records(
+                ds_train,
+                val_carve_ratio=val_carve_ratio,
+                seed=split_seed,
+            )
+            val_source = "carved_from_train"
+            carved_val_ids_by_dataset[ds_name] = [
+                str(r["sample_id"]) for r in resolved_val
+            ]
+
+        verify_client_split_integrity(
+            client_id=ds_name,
+            train_records=resolved_train,
+            val_records=resolved_val,
+            held_out_test_records=ds_test,
+        )
+
+        combined_train.extend(resolved_train)
+        combined_val.extend(resolved_val)
+        per_dataset_summary[ds_name] = {
+            "train_samples": len(resolved_train),
+            "validation_samples": len(resolved_val),
+            "test_samples_held_out": len(ds_test),
+            "val_source": val_source,
+        }
+
+    combined_train.sort(
+        key=lambda r: (str(r.get("dataset_name", "")), str(r.get("sample_id", "")))
+    )
+    combined_val.sort(
+        key=lambda r: (str(r.get("dataset_name", "")), str(r.get("sample_id", "")))
+    )
 
     if max_train_samples is not None:
-        train_pool = train_pool[:max_train_samples]
+        combined_train = combined_train[:max_train_samples]
     if max_val_samples is not None:
-        val_pool = val_pool[:max_val_samples]
+        combined_val = combined_val[:max_val_samples]
 
+    verify_client_split_integrity(
+        client_id="combined",
+        train_records=combined_train,
+        val_records=combined_val,
+        held_out_test_records=all_held_out_test,
+    )
+
+    train_ids_sha = hashlib.sha256(
+        json.dumps(
+            [f"{r['dataset_name']}:{r['sample_id']}" for r in combined_train]
+        ).encode("utf-8")
+    ).hexdigest()
+    val_ids_sha = hashlib.sha256(
+        json.dumps(
+            [f"{r['dataset_name']}:{r['sample_id']}" for r in combined_val]
+        ).encode("utf-8")
+    ).hexdigest()
+
+    split_info: dict[str, Any] = {
+        "val_split_mode": val_split_mode,
+        "val_carve_ratio": float(val_carve_ratio),
+        "split_seed": int(split_seed),
+        "per_dataset": per_dataset_summary,
+        "carved_validation_sample_ids": carved_val_ids_by_dataset,
+        "train_samples": len(combined_train),
+        "validation_samples": len(combined_val),
+        "test_samples_held_out": len(all_held_out_test),
+        "train_sample_ids_sha256": train_ids_sha,
+        "val_sample_ids_sha256": val_ids_sha,
+    }
+    return combined_train, combined_val, split_info
+
+
+def _select_train_val_records(
+    records: list[dict[str, Any]],
+    allowed_datasets: list[str] | None = None,
+    max_train_samples: int | None = None,
+    max_val_samples: int | None = None,
+    *,
+    val_split_mode: str = "official_and_carved",
+    val_carve_ratio: float = 0.2,
+    split_seed: int = 42,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Select strictly non-test train and validation records per dataset."""
+    train_pool, val_pool, _ = resolve_supervised_train_val_records(
+        records=records,
+        allowed_datasets=allowed_datasets,
+        max_train_samples=max_train_samples,
+        max_val_samples=max_val_samples,
+        val_split_mode=val_split_mode,
+        val_carve_ratio=val_carve_ratio,
+        split_seed=split_seed,
+    )
     return train_pool, val_pool
 
 
@@ -390,11 +753,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     logger = get_logger("fedmorphis.train_baseline")
 
-    base_cfg = load_yaml_config(PROJECT_ROOT / args.project_config, validate=False)
+    base_cfg = load_yaml_config(_resolve_cli_path(args.project_config), validate=False)
     validate_project_config(base_cfg)
-    data_cfg = load_yaml_config(PROJECT_ROOT / args.dataset_config, validate=False)
+    data_cfg = load_yaml_config(_resolve_cli_path(args.dataset_config), validate=False)
     validate_dataset_config(data_cfg)
-    model_cfg = load_yaml_config(PROJECT_ROOT / args.model_config, validate=False)
+    model_cfg = load_yaml_config(_resolve_cli_path(args.model_config), validate=False)
     validate_model_config(model_cfg)
 
     if args.no_pretrained:
@@ -414,6 +777,27 @@ def main(argv: list[str] | None = None) -> int:
         else base_cfg.get("random_seed", base_cfg.get("seed", 42))
     )
     deterministic = bool(base_cfg.get("deterministic", True))
+
+    if args.init_checkpoint and args.resume:
+        raise ValueError(
+            "--init-checkpoint and --resume are mutually exclusive. "
+            "Use --init-checkpoint only when starting a fresh experiment from shared initial weights."
+        )
+
+    strict_pretrained = bool(model_cfg.get("pretrained", True) and not args.no_pretrained)
+
+    if args.create_init_checkpoint:
+        init_meta = create_initial_model_checkpoint(
+            model_cfg=model_cfg,
+            output_path=args.create_init_checkpoint,
+            seed=seed,
+            deterministic=deterministic,
+            strict_pretrained_override=strict_pretrained,
+            overwrite=False,
+        )
+        print(json.dumps({"status": "created_init_checkpoint", **init_meta}, indent=2))
+        return 0
+
     set_seed(seed=seed, deterministic=deterministic)
 
     requested_device = args.device or str(base_cfg.get("device", "auto"))
@@ -430,6 +814,40 @@ def main(argv: list[str] | None = None) -> int:
         default_img_size = int(cfg_img_size)
     image_size = int(args.image_size or default_img_size)
 
+    output_dir = _resolve_cli_path(args.output_dir) if args.output_dir else None
+    train_cfg = dict(model_cfg.get("training", {}))
+    if args.checkpoint_dir is not None:
+        ckpt_dir = _resolve_cli_path(args.checkpoint_dir)
+        train_cfg["checkpoint_directory"] = format_project_path(ckpt_dir)
+    elif output_dir is not None:
+        ckpt_dir = output_dir
+        train_cfg["checkpoint_directory"] = format_project_path(ckpt_dir)
+    else:
+        ckpt_dir = _resolve_cli_path(
+            str(train_cfg.get("checkpoint_directory", "checkpoints/segmentation"))
+        )
+
+    if args.epochs is not None:
+        train_cfg["epochs"] = int(args.epochs)
+    model_cfg["training"] = train_cfg
+
+    if args.report_path:
+        out_report_path: Path | None = _resolve_cli_path(args.report_path)
+    elif output_dir is not None:
+        out_report_path = output_dir / "experiment_report.json"
+    elif args.dry_run:
+        out_report_path = None
+    else:
+        out_report_path = PROJECT_ROOT / "logs/supervised_baseline_ddr_report.json"
+
+    if not args.smoke_test:
+        verify_output_directory_safe(
+            ckpt_dir=ckpt_dir,
+            report_path=out_report_path,
+            is_resume=bool(args.resume),
+            is_dry_run=bool(args.dry_run),
+        )
+
     logger.info(
         "Initialized baseline runner on device=%s (cuda_available=%s, seed=%d, batch_size=%d, image_size=%d)",
         device,
@@ -443,7 +861,7 @@ def main(argv: list[str] | None = None) -> int:
         smoke_batch_size = int(args.batch_size or 2)
         smoke_img_size = int(args.image_size or 512)
         smoke_report_path = (
-            PROJECT_ROOT / args.report_path
+            _resolve_cli_path(args.report_path)
             if args.report_path
             else PROJECT_ROOT / "logs/unet_baseline_smoke_test.json"
         )
@@ -459,16 +877,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2))
         return 0
 
-    manifest_path = PROJECT_ROOT / args.manifest
+    manifest_path = _resolve_cli_path(args.manifest)
     manifest = load_manifest_json(manifest_path)
     all_records = manifest["records"]
-    train_records, val_records = _select_train_val_records(
+    train_records, val_records, split_info = resolve_supervised_train_val_records(
         all_records,
         allowed_datasets=args.datasets,
+        val_split_mode=args.val_split_mode,
+        val_carve_ratio=float(args.val_carve_ratio),
+        split_seed=int(args.split_seed),
     )
-    held_out_test_count = sum(
-        1 for r in all_records if str(r.get("split")).strip().lower() == "test"
-    )
+    held_out_test_count = int(split_info["test_samples_held_out"])
     datasets_included = sorted(
         list(
             {
@@ -549,24 +968,41 @@ def main(argv: list[str] | None = None) -> int:
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats(device)
 
-    strict_pretrained = bool(model_cfg.get("pretrained", True) and not args.no_pretrained)
+    train_batch_dist = inspect_dataloader_batch_distribution(
+        len(train_ds), batch_size=batch_size, drop_last=False
+    )
+    val_batch_dist = inspect_dataloader_batch_distribution(
+        len(val_ds), batch_size=batch_size, drop_last=False
+    )
+    if train_batch_dist["has_singleton_tail_batch"] and bool(
+        model_cfg.get("use_batchnorm", True)
+    ):
+        logger.warning(
+            "Training dataset size %d with batch_size=%d produces a singleton tail batch "
+            "(tail_batch_size=1) with BatchNorm enabled.",
+            len(train_ds),
+            batch_size,
+        )
+
     model = build_unet_from_config(
         model_cfg,
         strict_pretrained_override=strict_pretrained,
     )
+    init_checkpoint_info: dict[str, Any] = {
+        "init_checkpoint_path": None,
+        "init_checkpoint_sha256": None,
+        "initial_model_state_sha256": compute_state_dict_sha256(model.state_dict()),
+    }
+    if args.init_checkpoint:
+        init_checkpoint_info = load_initial_model_checkpoint(model, args.init_checkpoint)
+        logger.info(
+            "Loaded initial model weights from %s (sha256=%s)",
+            init_checkpoint_info["init_checkpoint_path"],
+            init_checkpoint_info["init_checkpoint_sha256"],
+        )
+
     criterion = build_loss_from_config(model_cfg)
     optimizer = build_optimizer_from_config(model, model_cfg)
-
-    train_cfg = dict(model_cfg.get("training", {}))
-    if args.checkpoint_dir is not None:
-        train_cfg["checkpoint_directory"] = format_project_path(args.checkpoint_dir)
-    if args.epochs is not None:
-        train_cfg["epochs"] = int(args.epochs)
-    model_cfg["training"] = train_cfg
-    ckpt_dir = Path(
-        args.checkpoint_dir
-        or PROJECT_ROOT / str(train_cfg.get("checkpoint_directory", "checkpoints/segmentation"))
-    )
 
     trainer = SupervisedSegmentationTrainer(
         model=model,
@@ -584,7 +1020,29 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.resume:
-        trainer.load_checkpoint(args.resume)
+        trainer.load_checkpoint(_resolve_cli_path(args.resume))
+
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        effective_cfg_payload = {
+            "project": base_cfg,
+            "dataset": data_cfg,
+            "model": model_cfg,
+            "runtime": {
+                "seed": seed,
+                "deterministic": deterministic,
+                "batch_size": batch_size,
+                "image_size": [image_size, image_size],
+                "manifest": format_project_path(args.manifest),
+                "datasets": args.datasets,
+                "split_resolution": split_info,
+                "init_checkpoint": init_checkpoint_info,
+            },
+        }
+        (output_dir / "effective_config.yaml").write_text(
+            yaml.safe_dump(effective_cfg_payload, sort_keys=False),
+            encoding="utf-8",
+        )
 
     num_epochs = 1 if args.dry_run else int(args.epochs or train_cfg.get("epochs", 50))
     max_batches = 1 if args.dry_run else None
@@ -607,6 +1065,46 @@ def main(argv: list[str] | None = None) -> int:
         2,
     )
     total_duration_sec = max(session_duration_sec, cumulative_epoch_sec)
+
+    # Evaluate validation AUPR/AP using the selected best checkpoint
+    best_ckpt_rel = result.get("best_checkpoint")
+    if best_ckpt_rel is not None:
+        best_ckpt_abs = _resolve_cli_path(best_ckpt_rel)
+        if best_ckpt_abs.is_file():
+            trainer.load_checkpoint(
+                best_ckpt_abs,
+                load_optimizer=False,
+                load_scheduler=False,
+                strict_model=True,
+                restore_rng=False,
+            )
+
+    model.eval()
+    pre_eval_state_sha = compute_state_dict_sha256(model.state_dict())
+    validation_aupr_report = evaluate_aupr_dataset(
+        model=model,
+        dataset=val_loader,
+        device=device,
+        use_sliding_window=False,
+        expected_split="valid",
+        batch_size=batch_size,
+        metric_threshold=trainer.metric_threshold,
+    )
+    post_eval_state_sha = compute_state_dict_sha256(model.state_dict())
+    if pre_eval_state_sha != post_eval_state_sha:
+        raise RuntimeError(
+            "Validation AUPR evaluation unexpectedly mutated model weights."
+        )
+    if model.training:
+        raise RuntimeError(
+            "Model remained in training mode after validation AUPR evaluation."
+        )
+
+    if output_dir is not None:
+        (output_dir / "validation_aupr_report.json").write_text(
+            json.dumps(validation_aupr_report, indent=2),
+            encoding="utf-8",
+        )
 
     gpu_memory: dict[str, Any] = {
         "cuda_used": device.type == "cuda",
@@ -648,10 +1146,21 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "epoch": h["epoch"],
                 "learning_rate": h["learning_rate"],
+                "primary_loss_component": h.get("primary_loss_component"),
+                "secondary_loss_component": h.get("secondary_loss_component"),
+                "overlap_component_name": h.get("overlap_component_name"),
                 "train_loss": h["train_loss"],
+                "train_bce_loss": h.get("train_bce_loss"),
+                "train_overlap_loss": h.get("train_overlap_loss"),
+                "train_per_channel_bce": h.get("train_per_channel_bce"),
+                "train_per_channel_overlap": h.get("train_per_channel_overlap"),
                 "train_dice_macro": h["train_dice_macro"],
                 "train_dice_macro_present_only": h.get("train_dice_macro_present_only"),
                 "val_loss": h["val_loss"],
+                "val_bce_loss": h.get("val_bce_loss"),
+                "val_overlap_loss": h.get("val_overlap_loss"),
+                "val_per_channel_bce": h.get("val_per_channel_bce"),
+                "val_per_channel_overlap": h.get("val_per_channel_overlap"),
                 "val_dice_macro": h["val_dice_macro"],
                 "val_dice_macro_present_only": h.get("val_dice_macro_present_only"),
                 "val_iou_macro": h["val_iou_macro"],
@@ -675,6 +1184,8 @@ def main(argv: list[str] | None = None) -> int:
         "deterministic": deterministic,
         "device": str(device),
         "amp_enabled": trainer.amp_enabled,
+        "output_directory": format_project_path(output_dir) if output_dir else None,
+        "initialization": init_checkpoint_info,
         "dataset": {
             "manifest_path": format_project_path(args.manifest),
             "datasets_included": datasets_included,
@@ -685,9 +1196,12 @@ def main(argv: list[str] | None = None) -> int:
             "image_size": [image_size, image_size],
             "batch_size": batch_size,
             "cache_in_memory": use_cache,
+            "split_resolution": split_info,
+            "train_batch_distribution": train_batch_dist,
+            "val_batch_distribution": val_batch_dist,
         },
         "model": model.get_model_summary(),
-        "loss_config": model_cfg.get("loss", {}),
+        "loss_config": summarize_loss_configuration(model_cfg),
         "training_config": train_cfg,
         "epochs_completed": int(result["epochs_completed"]),
         "global_step": int(result["global_step"]),
@@ -697,6 +1211,11 @@ def main(argv: list[str] | None = None) -> int:
         "best_validation_metrics": {
             "epoch": best_epoch_idx,
             "val_loss": best_epoch_record["val_loss"],
+            "val_bce_loss": best_epoch_record.get("val_bce_loss"),
+            "val_overlap_loss": best_epoch_record.get("val_overlap_loss"),
+            "overlap_component_name": best_epoch_record.get("overlap_component_name"),
+            "val_per_channel_bce": best_epoch_record.get("val_per_channel_bce"),
+            "val_per_channel_overlap": best_epoch_record.get("val_per_channel_overlap"),
             "val_dice_macro": best_epoch_record["val_dice_macro"],
             "val_dice_macro_present_only": best_epoch_record.get(
                 "val_dice_macro_present_only"
@@ -708,11 +1227,18 @@ def main(argv: list[str] | None = None) -> int:
             "present_classes": best_epoch_record["val"]["metrics"]["present_classes"],
             "absent_classes": best_epoch_record["val"]["metrics"]["absent_classes"],
             "per_class": best_epoch_record["val"]["metrics"]["per_class"],
+            "aupr": validation_aupr_report,
         },
+        "validation_aupr": validation_aupr_report,
         "final_epoch_metrics": {
             "epoch": final_epoch_record["epoch"],
             "train_loss": final_epoch_record["train_loss"],
+            "train_bce_loss": final_epoch_record.get("train_bce_loss"),
+            "train_overlap_loss": final_epoch_record.get("train_overlap_loss"),
+            "overlap_component_name": final_epoch_record.get("overlap_component_name"),
             "val_loss": final_epoch_record["val_loss"],
+            "val_bce_loss": final_epoch_record.get("val_bce_loss"),
+            "val_overlap_loss": final_epoch_record.get("val_overlap_loss"),
             "val_dice_macro": final_epoch_record["val_dice_macro"],
             "val_dice_macro_present_only": final_epoch_record.get(
                 "val_dice_macro_present_only"
@@ -734,19 +1260,10 @@ def main(argv: list[str] | None = None) -> int:
         experiment_report["baseline_validation_comparison"] = (
             build_validation_comparison_report(
                 candidate_report=experiment_report,
-                baseline_report_or_path=PROJECT_ROOT / args.baseline_report,
+                baseline_report_or_path=_resolve_cli_path(args.baseline_report),
             )
         )
 
-    out_report_path = (
-        PROJECT_ROOT / args.report_path
-        if args.report_path
-        else (
-            None
-            if args.dry_run
-            else PROJECT_ROOT / "logs/supervised_baseline_ddr_report.json"
-        )
-    )
     if out_report_path is not None:
         out_report_path.parent.mkdir(parents=True, exist_ok=True)
         out_report_path.write_text(
@@ -765,6 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
                 "best_metric_name": result["best_metric_name"],
                 "best_metric_value": result["best_metric_value"],
                 "best_epoch": result["best_epoch"],
+                "validation_aupr_macro": validation_aupr_report.get("aupr_macro"),
                 "training_duration_sec": total_duration_sec,
                 "gpu_memory": gpu_memory,
                 "report_path": format_project_path(out_report_path) if out_report_path else None,
